@@ -1,0 +1,21 @@
+{{
+
+import pymysql.cursors
+import json
+
+conn = pymysql.connect(host='localhost', user='root', password='root', db='ekatte', charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor)
+with conn.cursor() as x:
+	sql = """
+		select naseleni_mesta.name as name, naseleni_mesta.front as front, oblast.name as oblast, obstini.name as obstini, documents.institution as institution, documents.name as document, region.name as region, big_region.name as big_region from naseleni_mesta INNER JOIN obstini ON naseleni_mesta.fk_obshtini=obstini.Alphabetical_code INNER JOIN oblast ON obstini.oblast_fk=oblast.Alphabetical_code INNER JOIN region ON oblast.region_fk=region.Alphabetical_code	INNER JOIN big_region ON region.big_alpha_code=big_region.Alphabetical_code INNER JOIN documents ON naseleni_mesta.fk_document=documents.id WHERE naseleni_mesta.name LIKE '{0}%'
+	""".format(data["city"])
+	try:
+		x.execute(sql)
+		conn.commit()
+
+		data = x.fetchall()
+		if data is None:
+			data = ""
+		print(json.dumps(data))
+	except Exception as e:
+		conn.rollback()
+}}

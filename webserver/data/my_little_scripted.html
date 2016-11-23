@@ -1,20 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta charset="utf-8">
 	<title>hello</title>
 </head>
 <body>
 {{
-print(locals().get("data"))
 
+import datetime
+
+locals_data = locals().copy()
+
+curr_time = datetime.datetime.now()
+
+print("Сегашно време: {0}".format(str(curr_time)))
+
+if "num1" in locals_data["data"] and "num2" in locals_data["data"]:
+	print("Сумата на въведените числа е: {0}".format(int(locals_data["data"]["num1"]) + int(locals_data["data"]["num2"])))
+else:
+	print("Моля въведете 2 числа в url-то!")
 }}
  <div>
- 	hello
+ 	<span style = "color: red;">hello</span>
  </div>
 {{
 
-#print("Sum: {0}".format(int(locals()['data']['name1']) + int(locals()['data']['name2']) ) )
-#print("hello world2!")
+
+print(curr_time)
+print("Надежда всяка тука оставете!")
 
 }}
 </body>

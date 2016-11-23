@@ -6,6 +6,8 @@ import threading
 import subprocess
 from contextlib import redirect_stdout
 import io
+import urllib.parse
+import datetime
 
 master_root = os.getcwd()
 master_root += "/"
@@ -24,11 +26,13 @@ class ClientHandler(threading.Thread):
 
 	def run(self):
 		lines = self.socket.recv(buff_size).decode("utf-8").split("\n")
-		
 		basic_stuff = lines[0]
-
+		print(basic_stuff)
 		method_type, url, http_version = basic_stuff.split(" ")
 
+		url = urllib.parse.unquote(url)
+		print(url)
+		self.url = url
 		if url.split("/")[-1] == "":
 			url += "index.html"
 
@@ -64,8 +68,14 @@ class ClientHandler(threading.Thread):
 
 		except FileNotFoundError as e:
 			print(e)
-			with open(master_root+"/404.html", "rb") as f:
-				self.socket.sendfile(f)			
+			page_404 = master_root+"/404.html"
+			page_404_tmp = master_root+"/tmp/404.html{0}".format(random.uniform(1, 10))
+			with open(page_404, "r") as f:
+				tmp_file = self.parse_file(f, page_404_tmp, get_parameters)
+				self.socket.sendfile(tmp_file)
+				tmp_file.close()
+				os.remove(page_404_tmp)
+
 		self.socket.close()
 
 	def parse_file(self, file_hanler, tmp_file_path, data):
@@ -74,7 +84,7 @@ class ClientHandler(threading.Thread):
 		python_code = """"""
 		found_python_code = 0
 		parse_python_code = 0
-		for line_number, line in enumerate(file_hanler, 1):
+		for line in file_hanler:
 			if "{{" in line:
 				found_python_code = 1
 				continue
@@ -85,10 +95,15 @@ class ClientHandler(threading.Thread):
 
 				f = io.StringIO()
 				with redirect_stdout(f):
-					exec(python_code, {}, locals())
+					current_url = self.url
+					#Bug or feature?
+					#Ако дефинирам една променлива в един блок, то тя ще се пренесе и в следващич 
+					#(примерно $conn в php се пренася доста често)(при "template" езика)
+					#print(locals().keys())
+					exec(python_code, locals(), locals())
 
 				for python_code_output_line in f.getvalue().split("\n"):
-					temp_file.write(python_code_output_line + "<br />")
+					temp_file.write(python_code_output_line)
 				parse_python_code = 0
 				found_python_code = 0
 				python_code = ""
@@ -125,13 +140,11 @@ s.listen(10)
 i = 1
 while 1:
 	try:
-		print("Awaiting connection...")
 		connection_socket, addr = s.accept()
-		print("Connection got!")
+		connection_socket.settimeout(100)
 		print("User number {0}".format(i))
 		clientHandler = ClientHandler(user_id = i, socket = connection_socket, addr = addr)
 		clientHandler.run()
-		print("Connection lost!")
 		i += 1
 
 	except KeyboardInterrupt as e:

@@ -6,6 +6,16 @@
 </head>
 <body>
 Това е sample 404 page Ч:)
+<br />
+{{
+import datetime
 
+curr_time = datetime.datetime.now()
+
+print("<br />Страницата {0} не беше намерена!<br />".format(current_url))
+
+print("<br />Време на грешката: {0}<br />".format(curr_time))
+
+}}
 </body>
 </html>
