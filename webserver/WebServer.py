@@ -29,19 +29,34 @@ class ClientHandler(threading.Thread):
 		try:
 			data = self.socket.recv(buff_size).decode("utf-8")
 		except Exception as e:
-			self.kill_thread()
+			print("Тоя пич не иска да ми дава данни, или са зле форматирани данните - не заслужава 500 - ама бъгва ab-то, тъй че заслужава!")
+			server_error_file = open(master_root+"/500.html", "rb")
+			self.socket.sendfile(server_error_file)
 
-		lines = data.split("\n")
-		basic_stuff = lines[0]
-		method_type, url, http_version = basic_stuff.split(" ")
+			self.kill_thread()
+			return
+
+		try:
+			lines = data.split("\n")
+			basic_stuff = lines[0]
+			method_type, url, http_version = basic_stuff.split(" ")
+		except Exception as e:
+			print("Тоя пич не ми дава адекватни данни по стандарт")
+			server_error_file = open(master_root+"/500.html", "rb")
+			self.socket.sendfile(server_error_file)
+
+			self.kill_thread()
+			return
 
 		url = urllib.parse.unquote(url)
 		self.url = url
 		if url.split("/")[-1] == "":
 			url += "index.html"
 
+		#print(url)
+
 		try:
-			if not url.split("/")[-1].split(".")[1] == "html":
+			if not url.split("/")[-1].split(".")[1][0:4] == "html":
 				dont_parse = True
 			else:
 				dont_parse = False
@@ -61,15 +76,24 @@ class ClientHandler(threading.Thread):
 
 		get_parameters = {}
 		if has_get_params:
+			try:
+				get_arguments = url.split("?")[1].split("&")
+			except Exception as e:
+				print(e)
 
-			get_arguments = url.split("?")[1].split("&")
 			for argument in get_arguments:
-				argument_name, argument_value = argument.split("=")
-				get_parameters[argument_name] = argument_value
+				try:
+					argument_name, argument_value = argument.split("=")
+					get_parameters[argument_name] = argument_value
+				except Exception as e:
+					# if the get is malformed, dont pass it to the webpage!
+					pass
 
 		try:
 			if dont_parse:
 				with open(file_path, "rb") as f:
+					# if the file isnt .html
+					print(file_path)
 					self.socket.sendfile(f)
 
 			else:
@@ -92,6 +116,7 @@ class ClientHandler(threading.Thread):
 				tmp_file.close()
 				os.remove(page_404_tmp)
 
+		print("Closing socket!")
 		self.socket.close()
 
 	#Accepts some stuff like data and file handler and file pathing,
@@ -157,8 +182,6 @@ class ClientHandler(threading.Thread):
 			self.socket.close()
 		except Exception as e:
 			print(e)
-			sys.exit(1)
-		sys.exit(1)
 
 
 HOST = '127.0.0.1'
@@ -181,7 +204,7 @@ while 1:
 	try:
 		connection_socket, addr = s.accept()
 		try:
-			connection_socket.settimeout(10)
+			connection_socket.settimeout(2)
 		except Exception as e:
 			connection_socket.close()
 			continue

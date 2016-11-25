@@ -1,47 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<meta charset="utf-8">
 	<title>SAMPLE PAGE</title>
 </head>
 <body>
 <p>
 	Hello World
 </p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
-<p>
-	Hello World
-</p>
+{{
+
+locals_data = locals().copy()
+
+if "num1" in locals_data["data"]:
+	print("Сумата на въведените числа е: {0}".format(int(locals_data["data"]["num1"])))
+else:
+	print("Моля въведете числo в url-то!")
+
+}}
+
 </body>
 </html>
