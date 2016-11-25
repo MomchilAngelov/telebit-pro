@@ -1,20 +1,22 @@
-import socket
 import sys
 import os
-import random
-import threading
-import subprocess
-from contextlib import redirect_stdout
-import io
+
 import urllib.parse
-import datetime
+import select
+import socket
+import queue
+import threading
 
 master_root = os.getcwd()
 master_root += "/"
 master_root += sys.argv[1]
 
-buff_size = 12000
+buff_size = 4096
 
+def normalize_url(url):
+	if url == "/":
+		url += "index.html"
+	return urllib.parse.unquote(url)
 
 class ClientHandler(threading.Thread):
 
@@ -39,6 +41,7 @@ class ClientHandler(threading.Thread):
 			print(e)
 			print("Тоя пич не иска да ми дава данни, или са зле форматирани данните - не заслужава 500 - ама бъгва ab-то, тъй че заслужава!")
 			server_error_file = open(master_root+"/500.html", "rb")
+
 			self.socket.sendfile(server_error_file)
 
 			self.kill_thread()
@@ -60,16 +63,6 @@ class ClientHandler(threading.Thread):
 		self.url = url
 		if url.split("/")[-1] == "":
 			url += "index.html"
-
-		#print(url)
-
-		try:
-			if not url.split("/")[-1].split(".")[1][0:4] == "html":
-				dont_parse = True
-			else:
-				dont_parse = False
-		except IndexError as e:
-			dont_parse = True
 
 		if "?" in url:
 			has_get_params = True
@@ -98,31 +91,13 @@ class ClientHandler(threading.Thread):
 					pass
 
 		try:
-			if dont_parse:
-				with open(file_path, "rb") as f:
-					# if the file isnt .html
-					print(file_path)
-					self.socket.sendfile(f)
-
-			else:
-				with open(file_path, "r") as f:
-					tmp_file_path = master_root + "/tmp/{0}.html".format(random.uniform(1, 10))
-					
-					tmp_file = self.parse_file(f, tmp_file_path, get_parameters)
-
-					self.socket.sendfile(tmp_file)
-					tmp_file.close()
-					os.remove(tmp_file_path)
-
+			with open(file_path, "rb") as f:
+				self.socket.sendfile(f)
 
 		except FileNotFoundError as e:
 			page_404 = master_root+"/404.html"
-			page_404_tmp = master_root+"/tmp/404.html{0}".format(random.uniform(1, 10))
-			with open(page_404, "r") as f:
-				tmp_file = self.parse_file(f, page_404_tmp, get_parameters)
-				self.socket.sendfile(tmp_file)
-				tmp_file.close()
-				os.remove(page_404_tmp)
+			with open(page_404, "rb") as f:
+				self.socket.sendfile(f)
 
 		self.socket.close()
 
@@ -191,33 +166,85 @@ class ClientHandler(threading.Thread):
 			print(e)
 
 
-HOST = '127.0.0.1'
-PORT = 8080
+PORT = 80
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.setblocking(0)
 
 try:
 
-	s.bind((HOST, PORT))
+	s.bind(('127.0.0.1', PORT))
 
 except OSError as e:
 	print(e)
 	sys.exit(1)
 	
-s.listen(10)
+s.listen(5)
+print("Socket is waiting for connection on 127.0.0.1:80/")
 
-while 1:
-	try:
-		connection_socket, addr = s.accept()
-		try:
-			connection_socket.settimeout(2)
-		except Exception as e:
-			connection_socket.close()
-			continue
-		clientHandler = ClientHandler(socket = connection_socket, addr = addr)
-		clientHandler.run()
+inputs = [s]
+outputs = []
+exceptions = []
 
-	except KeyboardInterrupt as e:
-		print("Shutting down the server!")
-		s.close()
+message_queues = {}
+
+while inputs:
+	readable, writable, exceptional = select.select(inputs, outputs, exceptions, 120)
+
+	for socket in readable:
+		if socket is s:
+			connection, client_address = s.accept()
+			connection.setblocking(0)
+			inputs.append(connection)
+
+		else:
+			data = socket.recv(buff_size)
+			message_queues[socket] = data
+			if data:
+				#print('  received {!r} from {}'.format(data, socket.getpeername()))
+				outputs.append(socket)
+				inputs.remove(socket)
+			else:
+				inputs.remove(socket)
+				del message_queues[socket]
+				socket.close()
+
+	for socket in writable:
+		if not socket in message_queues:
+			with open(master_root+"/500.html", "rb") as f:
+				data = f.read(4096)
+				while data:
+					socket.send(data)
+					data = f.read(4096)
+		else:
+			url = message_queues[socket].decode("utf-8").split("\n")[0].split(" ")[1]
+			url = normalize_url(url)
+			try:
+				with open(master_root + url, "rb") as f:
+					data = f.read(4096)
+					while data:
+						socket.send(data)
+						data = f.read(4096)	
+			except FileNotFoundError as e:
+				with open(master_root + "/404.html", "rb") as f:
+					data = f.read(4096)
+					while data:
+						socket.send(data)
+						data = f.read(4096)
+
+		outputs.remove(socket)
+		del message_queues[socket]
+		socket.close()
+
+
+	for socket in exceptional:
+		if socket in inputs:
+			inputs.remove(socket)
+		if socket in exceptions:
+			exceptions.remove(socket)
+		if socket in outputs:
+			outputs.remove(socket)
+		
+		del message_queues[socket]
+		socket.close()
