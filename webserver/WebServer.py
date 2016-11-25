@@ -18,23 +18,35 @@ buff_size = 4096
 
 class ClientHandler(threading.Thread):
 
-	def __init__(self, user_id, socket, addr):
+	def __init__(self, socket, addr):
 		threading.Thread.__init__(self)
-		self.user_id = user_id
 		self.socket = socket
 		self.addr = addr
 
+
+
 	def run(self):
-		lines = self.socket.recv(buff_size).decode("utf-8").split("\n")
+		try:
+			data = self.socket.recv(buff_size).decode("utf-8")
+		except Exception as e:
+			self.kill_thread()
+
+		lines = data.split("\n")
 		basic_stuff = lines[0]
-		print(basic_stuff)
 		method_type, url, http_version = basic_stuff.split(" ")
 
 		url = urllib.parse.unquote(url)
-		print(url)
 		self.url = url
 		if url.split("/")[-1] == "":
 			url += "index.html"
+
+		try:
+			if not url.split("/")[-1].split(".")[1] == "html":
+				dont_parse = True
+			else:
+				dont_parse = False
+		except IndexError as e:
+			dont_parse = True
 
 		if "?" in url:
 			has_get_params = True
@@ -56,18 +68,22 @@ class ClientHandler(threading.Thread):
 				get_parameters[argument_name] = argument_value
 
 		try:
+			if dont_parse:
+				with open(file_path, "rb") as f:
+					self.socket.sendfile(f)
 
-			with open(file_path, "r") as f:
-				tmp_file_path = master_root + "/tmp/{0}.html".format(random.uniform(1, 10))
-				
-				tmp_file = self.parse_file(f, tmp_file_path, get_parameters)
+			else:
+				with open(file_path, "r") as f:
+					tmp_file_path = master_root + "/tmp/{0}.html".format(random.uniform(1, 10))
+					
+					tmp_file = self.parse_file(f, tmp_file_path, get_parameters)
 
-				self.socket.sendfile(tmp_file)
-				tmp_file.close()
-				os.remove(tmp_file_path)
+					self.socket.sendfile(tmp_file)
+					tmp_file.close()
+					os.remove(tmp_file_path)
+
 
 		except FileNotFoundError as e:
-			print(e)
 			page_404 = master_root+"/404.html"
 			page_404_tmp = master_root+"/tmp/404.html{0}".format(random.uniform(1, 10))
 			with open(page_404, "r") as f:
@@ -78,6 +94,8 @@ class ClientHandler(threading.Thread):
 
 		self.socket.close()
 
+	#Accepts some stuff like data and file handler and file pathing,
+	#Returns file handler - rb
 	def parse_file(self, file_hanler, tmp_file_path, data):
 		temp_file = open(tmp_file_path, "w")
 
@@ -94,13 +112,27 @@ class ClientHandler(threading.Thread):
 			if parse_python_code:
 
 				f = io.StringIO()
+				errors_in_python_code = 0
 				with redirect_stdout(f):
 					current_url = self.url
-					#Bug or feature?
-					#Ако дефинирам една променлива в един блок, то тя ще се пренесе и в следващич 
-					#(примерно $conn в php се пренася доста често)(при "template" езика)
-					#print(locals().keys())
-					exec(python_code, locals(), locals())
+					try:
+						exec(python_code, locals(), locals())
+					except Exception as e:
+						print(e)
+						errors_in_python_code = 1
+
+				if errors_in_python_code:
+					temp_file.close()
+					try:
+						print("Лошичък код!")
+						server_error_file = open(master_root+"/500.html", "rb")
+					except FileNotFoundError as e:
+						print(e)
+						# we hope we never get here!
+						no_file = open(master_root+"/404.html", "rb")
+						return no_file
+					return server_error_file
+
 
 				for python_code_output_line in f.getvalue().split("\n"):
 					temp_file.write(python_code_output_line)
@@ -120,9 +152,17 @@ class ClientHandler(threading.Thread):
 
 		return temp_file
 
+	def kill_thread(self):
+		try:
+			self.socket.close()
+		except Exception as e:
+			print(e)
+			sys.exit(1)
+		sys.exit(1)
+
 
 HOST = '127.0.0.1'
-PORT = 80
+PORT = 8080
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -137,15 +177,16 @@ except OSError as e:
 	
 s.listen(10)
 
-i = 1
 while 1:
 	try:
 		connection_socket, addr = s.accept()
-		connection_socket.settimeout(100)
-		print("User number {0}".format(i))
-		clientHandler = ClientHandler(user_id = i, socket = connection_socket, addr = addr)
+		try:
+			connection_socket.settimeout(10)
+		except Exception as e:
+			connection_socket.close()
+			continue
+		clientHandler = ClientHandler(socket = connection_socket, addr = addr)
 		clientHandler.run()
-		i += 1
 
 	except KeyboardInterrupt as e:
 		print("Shutting down the server!")
