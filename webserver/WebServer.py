@@ -13,7 +13,7 @@ master_root = os.getcwd()
 master_root += "/"
 master_root += sys.argv[1]
 
-buff_size = 4096
+buff_size = 12000
 
 
 class ClientHandler(threading.Thread):
@@ -28,7 +28,15 @@ class ClientHandler(threading.Thread):
 	def run(self):
 		try:
 			data = self.socket.recv(buff_size).decode("utf-8")
+			# print(data.decode("utf-8"))
+			# while data:
+			# 	all_data += data
+			# 	data = self.socket.recv(buff_size)
+			# 	print("Is this empty: " + data.decode("utf-8"))
+
+			# data = all_data
 		except Exception as e:
+			print(e)
 			print("Тоя пич не иска да ми дава данни, или са зле форматирани данните - не заслужава 500 - ама бъгва ab-то, тъй че заслужава!")
 			server_error_file = open(master_root+"/500.html", "rb")
 			self.socket.sendfile(server_error_file)
@@ -116,7 +124,6 @@ class ClientHandler(threading.Thread):
 				tmp_file.close()
 				os.remove(page_404_tmp)
 
-		print("Closing socket!")
 		self.socket.close()
 
 	#Accepts some stuff like data and file handler and file pathing,
