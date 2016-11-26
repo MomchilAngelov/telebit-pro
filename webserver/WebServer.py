@@ -1,7 +1,7 @@
 import sys
 import os
-
 import urllib.parse
+from urllib.parse import urlparse, parse_qs
 import select
 import socket
 import queue
@@ -11,240 +11,327 @@ master_root = os.getcwd()
 master_root += "/"
 master_root += sys.argv[1]
 
-buff_size = 4096
+CLOSE_CONNECTION = 0
+KILL_CONNECTION = 2
+file_id = 0
 
-def normalize_url(url):
-	if url == "/":
-		url += "index.html"
-	return urllib.parse.unquote(url)
+class MySocketWrapper():
 
-class ClientHandler(threading.Thread):
-
-	def __init__(self, socket, addr):
-		threading.Thread.__init__(self)
+	def __init__(self, socket):
 		self.socket = socket
-		self.addr = addr
+		self.buff_size = 1024*1024
+		self.url = ""
+		self.data = bytes()
+		self.fileHandler = None
+		self.to_read = 0
+		self.qs = {}
+		self.headers = {}
+		self.chunks = []
+		self.my_uploaded_file = None
+		self.to_where = 0
+		self.filename = ""
+		self.flag_for_uploaded_file = 0
 
-
-
-	def run(self):
+	def parse_first_line(self, line):
 		try:
-			data = self.socket.recv(buff_size).decode("utf-8")
-			# print(data.decode("utf-8"))
-			# while data:
-			# 	all_data += data
-			# 	data = self.socket.recv(buff_size)
-			# 	print("Is this empty: " + data.decode("utf-8"))
-
-			# data = all_data
+			first_line_split = line.split(" ")
+			self.method = first_line_split[0]
+			self.url = first_line_split[1]
+			self.normalize_url()
+			self.qs = parse_qs(urlparse("http://" + HOST + self.url).query)
+			self.protocol = first_line_split[2]
 		except Exception as e:
 			print(e)
-			print("Тоя пич не иска да ми дава данни, или са зле форматирани данните - не заслужава 500 - ама бъгва ab-то, тъй че заслужава!")
-			server_error_file = open(master_root+"/500.html", "rb")
+			return KILL_CONNECTION
 
-			self.socket.sendfile(server_error_file)
-
-			self.kill_thread()
-			return
-
-		try:
-			lines = data.split("\n")
-			basic_stuff = lines[0]
-			method_type, url, http_version = basic_stuff.split(" ")
-		except Exception as e:
-			print("Тоя пич не ми дава адекватни данни по стандарт")
-			server_error_file = open(master_root+"/500.html", "rb")
-			self.socket.sendfile(server_error_file)
-
-			self.kill_thread()
-			return
-
-		url = urllib.parse.unquote(url)
-		self.url = url
-		if url.split("/")[-1] == "":
-			url += "index.html"
-
-		if "?" in url:
-			has_get_params = True
-		else:
-			has_get_params = False
-
-		file_path = master_root
-		if has_get_params:
-			file_path += url.split("?")[0]
-		else:
-			file_path += url
-
-		get_parameters = {}
-		if has_get_params:
+	def get_headers(self, headers):
+		for line in headers:
 			try:
-				get_arguments = url.split("?")[1].split("&")
+				header_name, header_value = line.split(":", 1)
+				header_name = header_name.strip()
+				header_value = header_value.strip()
+				self.headers[header_name] = header_value
+			except Exception as e:
+				print(e)
+				continue
+	
+		if "Content-Length" in self.headers:
+			try:
+				self.to_read += int(self.headers["Content-Length"])
 			except Exception as e:
 				print(e)
 
-			for argument in get_arguments:
+	def started_uploading(self):
+		return self.filename is not ""
+
+	def read(self):
+		data_received = self.socket.recv(self.buff_size)
+
+		if self.url is "":
+			headers_bytes = data_received.split(b"\r\n\r\n")[0]
+			self.to_read += len(headers_bytes)
+		
+			headers = headers_bytes.decode("utf-8")
+			header_lines = headers.split("\n")
+			
+			result = self.parse_first_line(header_lines[0])
+			if result == KILL_CONNECTION:
+				return KILL_CONNECTION
+
+
+			self.get_headers(header_lines[1:])
+
+		self.data += data_received
+		self.to_read -= self.buff_size
+		if self.to_read < 0:
+			return CLOSE_CONNECTION
+		else:
+			return 1			
+
+
+	def write(self):
+		if self.method == "GET":
+			if self.fileHandler is None:
 				try:
-					argument_name, argument_value = argument.split("=")
-					get_parameters[argument_name] = argument_value
+					self.fileHandler = open(master_root + self.url, "rb")
+				except FileNotFoundError as e:
+					self.fileHandler = open(master_root + "/404.html", "rb")
 				except Exception as e:
-					# if the get is malformed, dont pass it to the webpage!
-					pass
+					self.fileHandler = open(master_root + "/500.html", "rb")
+					print(e)
 
-		try:
-			with open(file_path, "rb") as f:
-				self.socket.sendfile(f)
+			try:
+				data_to_send = self.fileHandler.read(self.buff_size)
+			except Exception as e:
+				print(e)
+				self.close()			
+				return CLOSE_CONNECTION
+				
+			if not data_to_send:
+				self.close()
+				return CLOSE_CONNECTION
+			else:
+				try:
+					self.socket.send(data_to_send)
+				except Exception as e:
+					print(e)
+					self.close()
+					return CLOSE_CONNECTION
+			
+			return 1
 
-		except FileNotFoundError as e:
-			page_404 = master_root+"/404.html"
-			with open(page_404, "rb") as f:
-				self.socket.sendfile(f)
+		elif self.method == "POST":
+			if not self.started_uploading():
 
-		self.socket.close()
-
-	#Accepts some stuff like data and file handler and file pathing,
-	#Returns file handler - rb
-	def parse_file(self, file_hanler, tmp_file_path, data):
-		temp_file = open(tmp_file_path, "w")
-
-		python_code = """"""
-		found_python_code = 0
-		parse_python_code = 0
-		for line in file_hanler:
-			if "{{" in line:
-				found_python_code = 1
-				continue
-			if "}}" in line:
-				parse_python_code = 1
-
-			if parse_python_code:
-
-				f = io.StringIO()
-				errors_in_python_code = 0
-				with redirect_stdout(f):
-					current_url = self.url
+				if "filename" in self.qs:
+					self.filename = self.qs["filename"]
 					try:
-						exec(python_code, locals(), locals())
+
+						self.filename_without_extension, self.file_extension = self.filename[0].rsplit(".", 2)
+
+					except Exception as e:
+						print("Счупване при парсването на името на файла\n" + str(e))
+						self.close()
+						return CLOSE_CONNECTION
+
+					if "/" in self.filename_without_extension:
+						self.filename_without_extension = self.filename_without_extension.replace("/", "|")
+
+					if "/" in self.file_extension:
+						self.file_extension = self.file_extension.replace("/", "|")
+
+					try:
+						bytes_body_of_request = self.data.split(b"\r\n\r\n", 2)[1]
+					
 					except Exception as e:
 						print(e)
-						errors_in_python_code = 1
+						print("Малформирана заявка")
+						self.close()
+						return CLOSE_CONNECTION
 
-				if errors_in_python_code:
-					temp_file.close()
+					print(len(self.data))
+					print(self.headers["Content-Length"])
+					self.chunks = [self.data[i:i+self.buff_size] for i in range(0, int(self.headers["Content-Length"]), self.buff_size)]
+				else:
+					self.close()
+					return CLOSE_CONNECTION	
+			
+			else:
+				global file_id
+				if self.my_uploaded_file is None:
+					
 					try:
-						print("Лошичък код!")
-						server_error_file = open(master_root+"/500.html", "rb")
-					except FileNotFoundError as e:
+
+						self.my_uploaded_file = open(master_root + "/uploads/" + self.filename_without_extension + str(file_id) + "." + self.file_extension, "wb")
+					
+					except Exception as e:
 						print(e)
-						# we hope we never get here!
-						no_file = open(master_root+"/404.html", "rb")
-						return no_file
-					return server_error_file
+						self.close()
+						return CLOSE_CONNECTION
+
+				file_id += 1
+
+				if not len(self.chunks) == self.to_where:
+					
+					try:
+						self.my_uploaded_file.write(self.chunks[self.to_where])
+
+					except Exception as e:
+						print(e)
+						os.remove(self.my_uploaded_file)
+						self.close()
+						return CLOSE_CONNECTION
+
+					self.to_where += 1
+				else:
+					
+					if self.flag_for_uploaded_file == 0:
+						self.flag_for_uploaded_file = 1
+
+						try:
+							self.my_uploaded_file.close()
+						except Exception as e:
+							print(e)
+							self.close()
+							return CLOSE_CONNECTION
+
+					if self.fileHandler is None:
+						try:
+							self.fileHandler = open(master_root + "/successfull.html", "rb")
+						except FileNotFoundError as e:
+							self.fileHandler = open(master_root + "/404.html", "rb")
+						except Exception as e:
+							self.fileHandler = open(master_root + "/500.html", "rb")
+							print(e)
+
+					try:
+						data_to_send = self.fileHandler.read(self.buff_size)
+					except Exception as e:
+						print(e)
+						self.close()			
+						return CLOSE_CONNECTION
+						
+					if not data_to_send:
+						self.close()
+						return CLOSE_CONNECTION
+					else:
+						try:
+							self.socket.send(data_to_send)
+						except Exception as e:
+							print(e)
+							self.close()
+							return CLOSE_CONNECTION
+					
+				return 1
+			
+		else:
+			print("We dont support this!")
+			self.close()
+			return CLOSE_CONNECTION
 
 
-				for python_code_output_line in f.getvalue().split("\n"):
-					temp_file.write(python_code_output_line)
-				parse_python_code = 0
-				found_python_code = 0
-				python_code = ""
-				continue
+	def fileno(self):
+		return self.socket.fileno()
 
-			if found_python_code:
-				python_code += line
-				continue
+	def normalize_url(self):
+		if self.url == "/":
+			self.url += "index.html"
+		return urllib.parse.unquote(self.url)
 
-			temp_file.write(line)
+	def close(self):
+		try:
+			self.fileHandler.close()
+		except Exception as e:
+			#already closed probably - still checking with print tho
+			pass
 
-		temp_file.close()
-		temp_file = open(tmp_file_path, "rb")
-
-		return temp_file
-
-	def kill_thread(self):
+		try:
+			self.my_uploaded_file.close()
+		except Exception as e:
+			#already closed probably - still checking with print tho
+			pass
+		
 		try:
 			self.socket.close()
 		except Exception as e:
-			print(e)
+			#already closed probably - still checking with print tho
+			pass
 
 
 PORT = 80
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.setblocking(0)
-
+HOST = '127.0.0.1'
 try:
-
-	s.bind(('127.0.0.1', PORT))
-
-except OSError as e:
+	server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	server_socket.setblocking(0)
+	server_socket.bind((HOST, PORT))
+except Exception as e:
 	print(e)
 	sys.exit(1)
 	
-s.listen(5)
+
+try:
+	server_socket.listen(5)
+except Exception as e:
+	print(e)
+	sys.exit(1)
+
+server_socket_wrapped = MySocketWrapper(server_socket)
+
 print("Socket is waiting for connection on 127.0.0.1:80/")
 
-inputs = [s]
+inputs = [server_socket_wrapped]
 outputs = []
 exceptions = []
 
-message_queues = {}
+try:
+	while inputs:
+		try:
+			readable, writable, exceptional = select.select(inputs, outputs, [], 120)
+		except Exception as e:
+			print(e)
+			continue
 
-while inputs:
-	readable, writable, exceptional = select.select(inputs, outputs, exceptions, 120)
+		for socket_wrapped in readable:
+			if socket_wrapped is server_socket_wrapped:
+				try:
+					connection, client_address = server_socket_wrapped.socket.accept()
+					print("Got connection from {0}".format(connection))
+				except Exception as e:
+					print(e)
+					continue
 
-	for socket in readable:
-		if socket is s:
-			connection, client_address = s.accept()
-			connection.setblocking(0)
-			inputs.append(connection)
+				try:
+					connection.setblocking(0)
+				except Exception as e:
+					print(e)					
+					try:
+						connection.close()
+					except Exception as e:
+						print(e)
+						continue
+					continue
 
-		else:
-			data = socket.recv(buff_size)
-			message_queues[socket] = data
-			if data:
-				#print('  received {!r} from {}'.format(data, socket.getpeername()))
-				outputs.append(socket)
-				inputs.remove(socket)
+				new_socket_wrapped = MySocketWrapper(connection)
+				inputs.append(new_socket_wrapped)
+
 			else:
-				inputs.remove(socket)
-				del message_queues[socket]
-				socket.close()
+				result = socket_wrapped.read()
+				if result == CLOSE_CONNECTION:
+					inputs.remove(socket_wrapped)
+					outputs.append(socket_wrapped)
 
-	for socket in writable:
-		if not socket in message_queues:
-			with open(master_root+"/500.html", "rb") as f:
-				data = f.read(4096)
-				while data:
-					socket.send(data)
-					data = f.read(4096)
-		else:
-			url = message_queues[socket].decode("utf-8").split("\n")[0].split(" ")[1]
-			url = normalize_url(url)
-			try:
-				with open(master_root + url, "rb") as f:
-					data = f.read(4096)
-					while data:
-						socket.send(data)
-						data = f.read(4096)	
-			except FileNotFoundError as e:
-				with open(master_root + "/404.html", "rb") as f:
-					data = f.read(4096)
-					while data:
-						socket.send(data)
-						data = f.read(4096)
-
-		outputs.remove(socket)
-		del message_queues[socket]
-		socket.close()
+				if result == KILL_CONNECTION:
+					inputs.remove(socket_wrapped)
 
 
-	for socket in exceptional:
-		if socket in inputs:
-			inputs.remove(socket)
-		if socket in exceptions:
-			exceptions.remove(socket)
-		if socket in outputs:
-			outputs.remove(socket)
-		
-		del message_queues[socket]
-		socket.close()
+		for socket_wrapped in writable:
+			result = socket_wrapped.write()
+
+			if result == CLOSE_CONNECTION:
+				outputs.remove(socket_wrapped)
+
+except KeyboardInterrupt as e:
+	print("Shutting server down...")
+	server_socket_wrapped.close()
+	print("Server is shut down...")
