@@ -6,17 +6,14 @@ from urllib.parse import urlparse, parse_qs
 import select
 import socket
 
+from pathing_string import *
+
 CLOSE_CONNECTION = 0
 KILL_CONNECTION = 2
 file_id = 0
 
 PORT = 80
 HOST = '127.0.0.1'
-
-master_root = os.getcwd()
-master_root += "/"
-master_root += sys.argv[1]
-
 
 class MySocketWrapper():
 
@@ -34,6 +31,7 @@ class MySocketWrapper():
 		self.chunks = []
 		self.my_uploaded_file = None
 		self.to_where = 0
+		self.sentHeaders = False
 		self.filename = ""
 		self.flag_for_uploaded_file = 0
 
@@ -42,7 +40,7 @@ class MySocketWrapper():
 			first_line_split = line.split(" ")
 			self.method = first_line_split[0]
 			self.url = first_line_split[1]
-			self.normalize_url()
+			self.normalizeUrl()
 			self.qs = parse_qs(urlparse("http://" + HOST + self.url).query)
 			self.protocol = first_line_split[2]
 		except Exception as e:
@@ -50,7 +48,7 @@ class MySocketWrapper():
 			#print("Data for exception: " + str(first_line_split))
 			return KILL_CONNECTION
 
-	def get_headers(self, headers):
+	def getHeaders(self, headers):
 		for line in headers:
 			if line is "":
 				continue
@@ -85,7 +83,7 @@ class MySocketWrapper():
 				return KILL_CONNECTION
 
 
-			self.get_headers(header_lines[1:])
+			self.getHeaders(header_lines[1:])
 
 		if self.method == "POST":
 
@@ -144,14 +142,15 @@ class MySocketWrapper():
 
 		if self.method == "GET":
 			if self.fileHandler is None:
+				self.url, first_line = getFileNameOnDisk(self.url)
+				self.setHeaders(first_line)
 				try:
-					self.fileHandler = open(master_root + self.url, "rb")
-				except FileNotFoundError as e:
-					self.fileHandler = open(master_root + "/404.html", "rb")
-				except Exception as e:
-					self.fileHandler = open(master_root + "/500.html", "rb")
-					print(e)
 
+					self.fileHandler = open(master_root + self.url, "rb")
+				except Exception as e:
+					print(e)
+					self.close()
+					return CLOSE_CONNECTION
 			try:
 				data_to_send = self.fileHandler.read(self.buff_size)
 			except Exception as e:
@@ -163,6 +162,10 @@ class MySocketWrapper():
 				return CLOSE_CONNECTION
 			else:
 				try:
+					if not self.sentHeaders:
+						self.socket.send(self.outputHeaders)
+						self.sentHeaders = True
+
 					self.socket.send(data_to_send)
 				except Exception as e:
 					self.close()
@@ -179,9 +182,7 @@ class MySocketWrapper():
 	def fileno(self):
 		return self.socket.fileno()
 
-	def normalize_url(self):
-		if self.url == "/":
-			self.url += "index.html"
+	def normalizeUrl(self):
 		return urllib.parse.unquote(self.url)
 
 	def close(self):
@@ -202,3 +203,7 @@ class MySocketWrapper():
 		except Exception as e:
 			#already closed probably - still checking with print tho
 			pass
+
+	def setHeaders(self, first_line):
+		self.outputHeaders = first_line + b"\r\n"
+		self.outputHeaders += b"\r\n\r\n"
