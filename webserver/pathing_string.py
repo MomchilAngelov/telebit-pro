@@ -1,10 +1,11 @@
 from url_helper import *
+import controller
 
 urls = [
-	("/", '/index.html'),
-	("/succ/", '/successfull.html'),
-	("/ekatte/", '/ekatte/index.html'),
-	("/ekatte/data/", '/ekatte/data_for_city.html'),
+	("/", controller.index),
+	("/succ/", controller.succ),
+	("/ekatte/", controller.ekatte),
+	("/ekatte/data/", controller.ekatte_data),
 ] + STATICS
 
 NOT_FOUND_FILE = "/404.html"
@@ -14,6 +15,9 @@ def getFileNameOnDisk(url):
 		if url == url_to_test[0]:
 			return url_to_test[1], b"HTTP/1.1 200 OK"
 	return NOT_FOUND_FILE, b"HTTP/1.1 404 NOT Found"
+
+
+
 
 # strings = []
 # strings.append("/data/asadasdadsa/")

@@ -11,7 +11,7 @@ except Exception as e:
 	
 
 try:
-	server_socket.listen(5)
+	server_socket.listen(15)
 except Exception as e:
 	print(e)
 	sys.exit(1)
@@ -19,7 +19,9 @@ except Exception as e:
 server_socket_wrapped = MySocketWrapper(server_socket)
 
 print("Socket is waiting for connection on 127.0.0.1:80/")
+print("Buffer reading size: " + str(server_socket_wrapped.buff_size))
 
+counter = 0
 inputs = [server_socket_wrapped]
 outputs = []
 exceptions = []
@@ -27,7 +29,9 @@ exceptions = []
 try:
 	while inputs:
 		try:
-			readable, writable, exceptional = select.select(inputs, outputs, [], 120)
+			readable, writable, exceptional = select.select(inputs, outputs, exceptions, 120)
+			#counter += 1
+			#print("big cycle number: {0}!".format(counter))
 		except Exception as e:
 			print(e)
 			continue
@@ -36,7 +40,9 @@ try:
 			if socket_wrapped is server_socket_wrapped:
 				try:
 					connection, client_address = server_socket_wrapped.socket.accept()
-					#print(connection)
+					# counter += 1
+					# if counter % 10 == 0:
+					# 	print(counter)
 				except Exception as e:
 					print(e)
 					continue
@@ -49,6 +55,7 @@ try:
 						connection.close()
 					except Exception as e:
 						continue
+					connection.close()
 					continue
 
 				new_socket_wrapped = MySocketWrapper(connection)
@@ -70,7 +77,20 @@ try:
 			if result == CLOSE_CONNECTION:
 				outputs.remove(socket_wrapped)
 
+
+		for socket_wrapped in exceptional:
+			print(socket_wrapped.socket)
+			counter += 1
+			socket_wrapped.close()
+
+			if socket_wrapped in inputs:
+				inputs.remove(socket_wrapped)
+
+			if socket_wrapped in outputs:
+				inputs.remove(socket_wrapped)
+			
 except KeyboardInterrupt as e:
 	print("Shutting server down...")
 	server_socket_wrapped.close()
 	print("Server is shut down...")
+	print("Number of exceptioned sockets: {0}".format(counter))

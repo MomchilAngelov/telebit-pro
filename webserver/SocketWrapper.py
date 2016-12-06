@@ -7,6 +7,7 @@ import select
 import socket
 
 from pathing_string import *
+import util
 
 CLOSE_CONNECTION = 0
 KILL_CONNECTION = 2
@@ -19,7 +20,6 @@ class MySocketWrapper():
 
 	def __init__(self, socket):
 		self.socket = socket
-		#self.buff_size = 1024*1024
 		self.buff_size = 1024 * 32
 		self.url = ""
 		self.data = bytes()
@@ -33,6 +33,7 @@ class MySocketWrapper():
 		self.to_where = 0
 		self.sentHeaders = False
 		self.filename = ""
+		self.outputHeaders = bytes()
 		self.flag_for_uploaded_file = 0
 
 	def parse_first_line(self, line):
@@ -61,15 +62,14 @@ class MySocketWrapper():
 				print(line)
 				print("57: " + str(e))
 				continue
-	
-		if "Content-Length" in self.headers:
-			try:
-				self.to_read += int(self.headers["Content-Length"])
-			except Exception as e:
-				print(e)
 
 	def read(self):
-		data_received = self.socket.recv(self.buff_size)
+		try:
+			data_received = self.socket.recv(self.buff_size)
+		except Exception as e:
+			print(e)
+			self.close()
+			return KILL_CONNECTION
 
 		if self.url is "":
 			headers_bytes = data_received.split(b"\r\n\r\n")[0]
@@ -85,79 +85,76 @@ class MySocketWrapper():
 
 			self.getHeaders(header_lines[1:])
 
-		if self.method == "POST":
+		# if self.method == "POST":
 
-			try:
-				filename = self.qs["filename"][0]
-			except Exception as e:
-				self.socket.send(bytes("Туй трябва да има filename като GET param", "utf-8"))
-				self.close()
-				return KILL_CONNECTION
+		# 	try:
+		# 		filename = self.qs["filename"][0]
+		# 	except Exception as e:
+		# 		self.socket.send(bytes("Туй трябва да има filename като GET param", "utf-8"))
+		# 		self.close()
+		# 		return KILL_CONNECTION
 
-			try:
-				data_to_write = data_received.split(b"\r\n\r\n")[1]
-			except Exception as e:
-				data_to_write = data_received
+		# 	try:
+		# 		data_to_write = data_received.split(b"\r\n\r\n")[1]
+		# 	except Exception as e:
+		# 		data_to_write = data_received
 
-			if not self.fileHandler:
-				file_path = master_root + "/uploads/" + filename
+		# 	if not self.fileHandler:
+		# 		file_path = master_root + "/uploads/" + filename
 
-				if os.path.isfile(file_path):
-					global file_id
-					file_id += 1
-					files_splitted = file_path.rsplit(".", 1)
-					file_path = files_splitted[0] + "({0})".format(file_id) + "." + files_splitted[1]
+		# 		if os.path.isfile(file_path):
+		# 			global file_id
+		# 			file_id += 1
+		# 			files_splitted = file_path.rsplit(".", 1)
+		# 			file_path = files_splitted[0] + "({0})".format(file_id) + "." + files_splitted[1]
 
-				self.fileHandler = open(file_path, "wb")
+		# 		self.fileHandler = open(file_path, "wb")
 
-			try:
-				bytes_written = self.fileHandler.write(data_to_write)
-				#if bytes_written != len(data_to_write):
-					#print("There was an error - wrote less than what i received!")
-				#	pass
-				#if len(data_received) != self.buff_size:
-					#print("Got less than I want:\n\tWanted: {0}\n\tGot: {1}".format(self.buff_size ,len(data_received)))
-				#	pass
-			except Exception as e:
-				print(e)
-
+		# 	try:
+		# 		bytes_written = self.fileHandler.write(data_to_write)
+		# 	except Exception as e:
+		# 		print(e)
+		
 		self.data += data_received
-		self.to_read -= len(data_received)
-		if self.to_read < 0:
-			return CLOSE_CONNECTION
-		elif len(data_received) == 0:
-			#the file was not fully sent
-			try:
-				self.fileHandler.close()
-				os.remove(self.fileHandler.name)
-			except Exception as e:
-				print(e)
-
-			return CLOSE_CONNECTION
+		if data_received == self.buff_size:
+			return 1
 		else:
-			return 1			
+			return CLOSE_CONNECTION			
 
 
 	def write(self):		
 
 		if self.method == "GET":
 			if self.fileHandler is None:
-				self.url, first_line = getFileNameOnDisk(self.url)
-				self.setHeaders(first_line)
-				try:
+				
+				method_or_string, first_line = getFileNameOnDisk(self.url)
+				
+				if type(method_or_string) is str:
+					self.url = method_or_string
+				else:
+					self.url = method_or_string()
 
+				self.setHeaders(first_line)
+				self.setHeaders(util.curr_date())
+				self.setHeaders(util.type_to_expire(self.url))
+				self.endHeaders()
+
+				try:
 					self.fileHandler = open(master_root + self.url, "rb")
 				except Exception as e:
 					print(e)
 					self.close()
 					return CLOSE_CONNECTION
 			try:
+				print("block")
 				data_to_send = self.fileHandler.read(self.buff_size)
+				print("unblock")
 			except Exception as e:
+				print(e)
 				self.close()			
 				return CLOSE_CONNECTION
 				
-			if not data_to_send:
+			if len(data_to_send) < self.buff_size:
 				self.close()
 				return CLOSE_CONNECTION
 			else:
@@ -168,14 +165,18 @@ class MySocketWrapper():
 
 					self.socket.send(data_to_send)
 				except Exception as e:
+					print("Unable to send data from file to socket!\n\t{0}".format(e))
 					self.close()
 					return CLOSE_CONNECTION
 			
 			return 1
 
 		else:
-			self.socket.send("We dont support this!".encode("utf-8"))
-			self.close()
+			try:
+				self.socket.send("We dont support this!".encode("utf-8"))
+				self.close()
+			except Exception as e:
+				return CLOSE_CONNECTION
 			return CLOSE_CONNECTION
 
 
@@ -204,6 +205,8 @@ class MySocketWrapper():
 			#already closed probably - still checking with print tho
 			pass
 
-	def setHeaders(self, first_line):
-		self.outputHeaders = first_line + b"\r\n"
-		self.outputHeaders += b"\r\n\r\n"
+	def setHeaders(self, header):
+		self.outputHeaders += header + b"\r\n"
+
+	def endHeaders(self):
+		self.outputHeaders += b"\r\n"
