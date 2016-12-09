@@ -28,18 +28,31 @@ exceptions = []
 
 try:
 	while inputs:
+		# for wrapper, text in zip([outputs, exceptions, inputs], ["output", "exceptions", "inputs"]):
+		# 	print(text)
+		# 	for socket_wrapped in wrapper:
+		# 		print(socket_wrapped)	
 		try:
-			readable, writable, exceptional = select.select(inputs, outputs, exceptions, 120)
+			readable, writable, exceptional = select.select(inputs, outputs, exceptions, 1)
+			# print("*"*150)
 			#counter += 1
 			#print("big cycle number: {0}!".format(counter))
 		except Exception as e:
-			print(e)
+			print("41: {0}".format(e))
+			time.sleep(1)
 			continue
 
 		for socket_wrapped in readable:
+			if socket_wrapped in writable:
+				print("Socket both readable and writable!")
+				writable.remove(socket_wrapped)
+
+		for socket_wrapped in readable:
+			print(readable)
 			if socket_wrapped is server_socket_wrapped:
 				try:
 					connection, client_address = server_socket_wrapped.socket.accept()
+					print("Socket received: {0}".format(connection))
 					# counter += 1
 					# if counter % 10 == 0:
 					# 	print(counter)
@@ -65,21 +78,29 @@ try:
 				result = socket_wrapped.read()
 				if result == CLOSE_CONNECTION:
 					inputs.remove(socket_wrapped)
-					outputs.append(socket_wrapped)
+					if socket_wrapped not in outputs:
+						outputs.append(socket_wrapped)
 
 				if result == KILL_CONNECTION:
 					inputs.remove(socket_wrapped)
 
+				if result == COULD_BE_EMPTY_OR_SLOW:
+					outputs.append(socket_wrapped)
+					exceptions.append(socket_wrapped)
 
 		for socket_wrapped in writable:
+			print(writable)
 			result = socket_wrapped.write()
-
 			if result == CLOSE_CONNECTION:
 				outputs.remove(socket_wrapped)
+				if socket_wrapped in inputs:
+					inputs.remove(socket_wrapped)
 
 
 		for socket_wrapped in exceptional:
-			print(socket_wrapped.socket)
+			print(exceptional)
+			print("Exceptional!")
+			print(socket_wrapped)
 			counter += 1
 			socket_wrapped.close()
 

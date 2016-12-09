@@ -5,12 +5,15 @@ import urllib.parse
 from urllib.parse import urlparse, parse_qs
 import select
 import socket
+import time
+import errno
 
 from pathing_string import *
 import util
 
 CLOSE_CONNECTION = 0
 KILL_CONNECTION = 2
+COULD_BE_EMPTY_OR_SLOW = 3
 file_id = 0
 
 PORT = 80
@@ -21,6 +24,7 @@ class MySocketWrapper():
 	def __init__(self, socket):
 		self.socket = socket
 		self.buff_size = 1024 * 32
+		self.buff_size = 1
 		self.url = ""
 		self.data = bytes()
 		self.fileHandler = None
@@ -34,6 +38,7 @@ class MySocketWrapper():
 		self.sentHeaders = False
 		self.filename = ""
 		self.outputHeaders = bytes()
+		self.to_send = bytes()
 		self.flag_for_uploaded_file = 0
 
 	def parse_first_line(self, line):
@@ -45,6 +50,8 @@ class MySocketWrapper():
 			self.qs = parse_qs(urlparse("http://" + HOST + self.url).query)
 			self.protocol = first_line_split[2]
 		except Exception as e:
+			print("Problem in parsing the first line:\n\t{0}".format(e))
+			print("First line: {0}".format(line))
 			#print("45:" + str(e))
 			#print("Data for exception: " + str(first_line_split))
 			return KILL_CONNECTION
@@ -60,30 +67,25 @@ class MySocketWrapper():
 				self.headers[header_name] = header_value
 			except Exception as e:
 				print(line)
-				print("57: " + str(e))
+				print("69: " + str(e))
 				continue
 
 	def read(self):
+		print("Im in read!")
+		self.i = 0
 		try:
-			data_received = self.socket.recv(self.buff_size)
+			while True:
+				data_received = self.socket.recv(self.buff_size)
+				if not data_received:
+					break
+				self.data += data_received
 		except Exception as e:
-			print(e)
-			self.close()
-			return KILL_CONNECTION
-
-		if self.url is "":
-			headers_bytes = data_received.split(b"\r\n\r\n")[0]
-			self.to_read += len(headers_bytes)
-		
-			headers = headers_bytes.decode("utf-8")
-			header_lines = headers.split("\n")
-			
-			result = self.parse_first_line(header_lines[0])
-			if result == KILL_CONNECTION:
+			print("80: {0}".format(e))
+			if e.errno == 11:
+				return COULD_BE_EMPTY_OR_SLOW
+			else:
+				self.close()
 				return KILL_CONNECTION
-
-
-			self.getHeaders(header_lines[1:])
 
 		# if self.method == "POST":
 
@@ -114,16 +116,31 @@ class MySocketWrapper():
 		# 		bytes_written = self.fileHandler.write(data_to_write)
 		# 	except Exception as e:
 		# 		print(e)
-		
-		self.data += data_received
-		if data_received == self.buff_size:
-			return 1
-		else:
-			return CLOSE_CONNECTION			
+
+		return CLOSE_CONNECTION	
 
 
-	def write(self):		
+	def write(self):
+		print("Im in write!")
+		if self.url is "":
+			headers_bytes = self.data.split(b"\r\n\r\n")[0]
+			try:
+				headers = headers_bytes.decode("utf-8")
+			except Exception as e:
+				print(e)
+				self.close()
+				return KILL_CONNECTION
 
+			header_lines = headers.split("\n")
+			
+			result = self.parse_first_line(header_lines[0])
+			if result == KILL_CONNECTION:
+				return KILL_CONNECTION
+
+
+			self.getHeaders(header_lines[1:])		
+
+		print("Im in get!")
 		if self.method == "GET":
 			if self.fileHandler is None:
 				
@@ -142,32 +159,31 @@ class MySocketWrapper():
 				try:
 					self.fileHandler = open(master_root + self.url, "rb")
 				except Exception as e:
-					print(e)
+					print("157: {0}".format(e))
 					self.close()
 					return CLOSE_CONNECTION
+
 			try:
-				print("block")
-				data_to_send = self.fileHandler.read(self.buff_size)
-				print("unblock")
+				while True:
+					data_to_send = self.fileHandler.read(self.buff_size)
+					self.to_send += data_to_send
+					if not data_to_send:
+						break
 			except Exception as e:
-				print(e)
+				print("167: {0}".format(e))
 				self.close()			
 				return CLOSE_CONNECTION
 				
-			if len(data_to_send) < self.buff_size:
+			try:
+				if not self.sentHeaders:
+					self.socket.send(self.outputHeaders)
+					self.sentHeaders = True
+
+				self.socket.send(self.to_send)
+			except Exception as e:
+				print("Unable to send data from file to socket!\n\t{0}".format(e))
 				self.close()
 				return CLOSE_CONNECTION
-			else:
-				try:
-					if not self.sentHeaders:
-						self.socket.send(self.outputHeaders)
-						self.sentHeaders = True
-
-					self.socket.send(data_to_send)
-				except Exception as e:
-					print("Unable to send data from file to socket!\n\t{0}".format(e))
-					self.close()
-					return CLOSE_CONNECTION
 			
 			return 1
 
@@ -176,7 +192,9 @@ class MySocketWrapper():
 				self.socket.send("We dont support this!".encode("utf-8"))
 				self.close()
 			except Exception as e:
+				self.close()
 				return CLOSE_CONNECTION
+			self.close()
 			return CLOSE_CONNECTION
 
 
@@ -210,3 +228,6 @@ class MySocketWrapper():
 
 	def endHeaders(self):
 		self.outputHeaders += b"\r\n"
+
+	def __str__(self):
+		return "Socket with fd: {0}".format(self.fileno())
