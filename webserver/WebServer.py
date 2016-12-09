@@ -48,7 +48,7 @@ try:
 				writable.remove(socket_wrapped)
 
 		for socket_wrapped in readable:
-			print(readable)
+			#print(readable)
 			if socket_wrapped is server_socket_wrapped:
 				try:
 					connection, client_address = server_socket_wrapped.socket.accept()
@@ -85,13 +85,13 @@ try:
 					inputs.remove(socket_wrapped)
 
 				if result == COULD_BE_EMPTY_OR_SLOW:
-					outputs.append(socket_wrapped)
-					exceptions.append(socket_wrapped)
+					if socket_wrapped not in outputs:
+						outputs.append(socket_wrapped)
 
 		for socket_wrapped in writable:
-			print(writable)
+			#print(writable)
 			result = socket_wrapped.write()
-			if result == CLOSE_CONNECTION:
+			if result == CLOSE_CONNECTION or result == KILL_CONNECTION:
 				outputs.remove(socket_wrapped)
 				if socket_wrapped in inputs:
 					inputs.remove(socket_wrapped)

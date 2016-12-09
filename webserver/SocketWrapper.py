@@ -5,6 +5,7 @@ import urllib.parse
 from urllib.parse import urlparse, parse_qs
 import select
 import socket
+import math
 import time
 import errno
 
@@ -23,8 +24,7 @@ class MySocketWrapper():
 
 	def __init__(self, socket):
 		self.socket = socket
-		self.buff_size = 1024 * 32
-		self.buff_size = 1
+		self.buff_size = 1024 * 64
 		self.url = ""
 		self.data = bytes()
 		self.fileHandler = None
@@ -72,7 +72,6 @@ class MySocketWrapper():
 
 	def read(self):
 		print("Im in read!")
-		self.i = 0
 		try:
 			while True:
 				data_received = self.socket.recv(self.buff_size)
@@ -158,34 +157,52 @@ class MySocketWrapper():
 
 				try:
 					self.fileHandler = open(master_root + self.url, "rb")
+					print("Отваряме файла...")
 				except Exception as e:
 					print("157: {0}".format(e))
 					self.close()
 					return CLOSE_CONNECTION
 
-			try:
-				while True:
-					data_to_send = self.fileHandler.read(self.buff_size)
-					self.to_send += data_to_send
-					if not data_to_send:
-						break
-			except Exception as e:
-				print("167: {0}".format(e))
-				self.close()			
-				return CLOSE_CONNECTION
-				
+			if self.to_where == 0:
+				try:
+					print("Четене от файла...")
+					while True:
+						data_to_send = self.fileHandler.read(self.buff_size)
+						self.to_send += data_to_send
+						print("Изчетени байтове: {0}".format(len(self.to_send)))
+						if len(data_to_send) < self.buff_size:
+							break
+				except Exception as e:
+					print("167: {0}".format(e))
+					self.close()			
+					return CLOSE_CONNECTION
 			try:
 				if not self.sentHeaders:
 					self.socket.send(self.outputHeaders)
 					self.sentHeaders = True
 
-				self.socket.send(self.to_send)
+				all_bytes = len(self.to_send)
+				while self.to_where != all_bytes:
+					try:
+						read_bytes = self.socket.send(self.to_send[self.to_where:self.to_where+self.buff_size])
+					except Exception as e:
+						if e.errno == 11:
+							return 1
+						else:
+							print(e)
+							self.close()
+							return CLOSE_CONNECTION
+
+					print("Изпратени байтове: {0}-{1}/{2}".format(self.to_where, self.to_where+self.buff_size, all_bytes))
+					self.to_where += read_bytes
+					
 			except Exception as e:
 				print("Unable to send data from file to socket!\n\t{0}".format(e))
 				self.close()
 				return CLOSE_CONNECTION
 			
-			return 1
+			self.close()
+			return CLOSE_CONNECTION
 
 		else:
 			try:
