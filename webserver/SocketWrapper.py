@@ -5,6 +5,7 @@ import urllib.parse
 from urllib.parse import urlparse, parse_qs
 import select
 import socket
+import datetime
 import math
 import time
 import errno
@@ -18,13 +19,14 @@ COULD_BE_EMPTY_OR_SLOW = 3
 file_id = 0
 
 PORT = 80
-HOST = '127.0.0.1'
+HOST = ''
 
 class MySocketWrapper():
 
 	def __init__(self, socket):
 		self.socket = socket
 		self.buff_size = 1024 * 64
+		self.buff_size_file_read = 1024*256
 		self.url = ""
 		self.data = bytes()
 		self.fileHandler = None
@@ -42,19 +44,17 @@ class MySocketWrapper():
 		self.flag_for_uploaded_file = 0
 
 	def parse_first_line(self, line):
-		try:
-			first_line_split = line.split(" ")
-			self.method = first_line_split[0]
-			self.url = first_line_split[1]
-			self.normalizeUrl()
-			self.qs = parse_qs(urlparse("http://" + HOST + self.url).query)
-			self.protocol = first_line_split[2]
-		except Exception as e:
-			print("Problem in parsing the first line:\n\t{0}".format(e))
-			print("First line: {0}".format(line))
-			#print("45:" + str(e))
-			#print("Data for exception: " + str(first_line_split))
+		split_line = line.split(" ")
+		if len(split_line) != 3:
+			print("Prolem parsing the header line...")
+			#print(self.data)
 			return KILL_CONNECTION
+			
+		self.method, self.url, self.protocol = split_line
+		self.normalizeUrl()
+		self.qs = parse_qs(urlparse("http://" + HOST + self.url).query)
+
+		return 1
 
 	def getHeaders(self, headers):
 		for line in headers:
@@ -66,12 +66,11 @@ class MySocketWrapper():
 				header_value = header_value.strip()
 				self.headers[header_name] = header_value
 			except Exception as e:
-				print(line)
-				print("69: " + str(e))
+				print("Problem in the headers parsing: " + str(e))
 				continue
 
 	def read(self):
-		print("Im in read!")
+		#print("Im in read!")
 		try:
 			while True:
 				data_received = self.socket.recv(self.buff_size)
@@ -79,7 +78,7 @@ class MySocketWrapper():
 					break
 				self.data += data_received
 		except Exception as e:
-			print("80: {0}".format(e))
+			#print("80: {0}".format(e))
 			if e.errno == 11:
 				return COULD_BE_EMPTY_OR_SLOW
 			else:
@@ -120,26 +119,31 @@ class MySocketWrapper():
 
 
 	def write(self):
-		print("Im in write!")
+		#print("Im in write!")
 		if self.url is "":
+			if not self.data:
+				print("The socket gave no information and i can't read from it -> KILL IT")
+				return KILL_CONNECTION
+
 			headers_bytes = self.data.split(b"\r\n\r\n")[0]
 			try:
 				headers = headers_bytes.decode("utf-8")
 			except Exception as e:
-				print(e)
+				print("Trying to decode the header bytes (i think they should be utf-8 so i can know what it says?)" + str(e))
 				self.close()
 				return KILL_CONNECTION
 
 			header_lines = headers.split("\n")
 			
 			result = self.parse_first_line(header_lines[0])
+
 			if result == KILL_CONNECTION:
 				return KILL_CONNECTION
 
 
 			self.getHeaders(header_lines[1:])		
 
-		print("Im in get!")
+		#print("Im in get!")
 		if self.method == "GET":
 			if self.fileHandler is None:
 				
@@ -157,23 +161,26 @@ class MySocketWrapper():
 
 				try:
 					self.fileHandler = open(master_root + self.url, "rb")
-					print("Отваряме файла...")
+					#print("Отваряме файла...")
 				except Exception as e:
-					print("157: {0}".format(e))
+					print("Unable to open the file i should read to give him the (html or etc.): {0}".format(e))
 					self.close()
 					return CLOSE_CONNECTION
 
 			if self.to_where == 0:
 				try:
-					print("Четене от файла...")
+					#print("Четене от файла {0}".format(self.url))
+					self.date = datetime.datetime.now()
 					while True:
-						data_to_send = self.fileHandler.read(self.buff_size)
+						data_to_send = self.fileHandler.read(self.buff_size_file_read)
 						self.to_send += data_to_send
-						print("Изчетени байтове: {0}".format(len(self.to_send)))
-						if len(data_to_send) < self.buff_size:
+						#print("Изчетени байтове: {0}".format(len(self.to_send)))
+						if len(data_to_send) < self.buff_size_file_read:
+							#print("Отнето време за изчитане на файла:\n\t", end="")
+							#print(datetime.datetime.now()-self.date)
 							break
 				except Exception as e:
-					print("167: {0}".format(e))
+					print("Problem with reading the file (html or etc.): {0}".format(e))
 					self.close()			
 					return CLOSE_CONNECTION
 			try:
@@ -184,16 +191,22 @@ class MySocketWrapper():
 				all_bytes = len(self.to_send)
 				while self.to_where != all_bytes:
 					try:
-						read_bytes = self.socket.send(self.to_send[self.to_where:self.to_where+self.buff_size])
+						read_bytes = self.socket.send(self.to_send[self.to_where:self.to_where+self.buff_size_file_read])
 					except Exception as e:
 						if e.errno == 11:
 							return 1
-						else:
+
+						if e.errno == 32:
+							print("The Client has closed the connection prematurely!")
 							print(e)
 							self.close()
 							return CLOSE_CONNECTION
 
-					print("Изпратени байтове: {0}-{1}/{2}".format(self.to_where, self.to_where+self.buff_size, all_bytes))
+						print("Unable to send the file to the socket: " + str(e))
+						self.close()
+						return CLOSE_CONNECTION
+
+					#print("Изпратени байтове: {0}-{1}/{2}".format(self.to_where, self.to_where+self.buff_size, all_bytes))
 					self.to_where += read_bytes
 					
 			except Exception as e:
@@ -225,19 +238,16 @@ class MySocketWrapper():
 		try:
 			self.fileHandler.close()
 		except Exception as e:
-			#already closed probably - still checking with print tho
 			pass
 
 		try:
 			self.my_uploaded_file.close()
 		except Exception as e:
-			#already closed probably - still checking with print tho
 			pass
 		
 		try:
 			self.socket.close()
 		except Exception as e:
-			#already closed probably - still checking with print tho
 			pass
 
 	def setHeaders(self, header):

@@ -11,15 +11,16 @@ except Exception as e:
 	
 
 try:
-	server_socket.listen(15)
+	server_socket.listen(1000)
 except Exception as e:
 	print(e)
 	sys.exit(1)
 
 server_socket_wrapped = MySocketWrapper(server_socket)
 
-print("Socket is waiting for connection on 127.0.0.1:80/")
-print("Buffer reading size: " + str(server_socket_wrapped.buff_size))
+print("Socket is waiting for connection on {0}".format(server_socket_wrapped.socket))
+print("Buffer reading size from socket: " + str(server_socket_wrapped.buff_size))
+print("Buffer reading size from file: " + str(server_socket_wrapped.buff_size_file_read))
 
 counter = 0
 inputs = [server_socket_wrapped]
@@ -38,8 +39,7 @@ try:
 			#counter += 1
 			#print("big cycle number: {0}!".format(counter))
 		except Exception as e:
-			print("41: {0}".format(e))
-			time.sleep(1)
+			print("Select result: {0}".format(e))
 			continue
 
 		for socket_wrapped in readable:
@@ -52,12 +52,12 @@ try:
 			if socket_wrapped is server_socket_wrapped:
 				try:
 					connection, client_address = server_socket_wrapped.socket.accept()
-					print("Socket received: {0}".format(connection))
+					#print("Socket received: {0}".format(connection))
 					# counter += 1
 					# if counter % 10 == 0:
 					# 	print(counter)
 				except Exception as e:
-					print(e)
+					print("Socket acception: {0}".format(e))
 					continue
 
 				try:
