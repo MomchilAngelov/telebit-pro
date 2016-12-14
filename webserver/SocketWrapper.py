@@ -16,7 +16,12 @@ import util
 CLOSE_CONNECTION = 0
 KILL_CONNECTION = 2
 COULD_BE_EMPTY_OR_SLOW = 3
+SPECIAL_CONDITION = 4
 file_id = 0
+DEBUG = 0
+
+if len(sys.argv) == 3 and sys.argv[2] == 'DEBUG':
+	DEBUG = 1
 
 PORT = 80
 HOST = ''
@@ -40,6 +45,7 @@ class MySocketWrapper():
 		self.sentHeaders = False
 		self.filename = ""
 		self.outputHeaders = bytes()
+		self.is_file_read = False
 		self.to_send = bytes()
 		self.flag_for_uploaded_file = 0
 
@@ -70,7 +76,6 @@ class MySocketWrapper():
 				continue
 
 	def read(self):
-		#print("Im in read!")
 		try:
 			while True:
 				data_received = self.socket.recv(self.buff_size)
@@ -78,54 +83,28 @@ class MySocketWrapper():
 					break
 				self.data += data_received
 		except Exception as e:
-			#print("80: {0}".format(e))
 			if e.errno == 11:
+				# Resource temporary unavailable
+				# Това е еррора, ако трябва да блокне, но не блоква
+
 				return COULD_BE_EMPTY_OR_SLOW
 			else:
+				if DEBUG:
+					print("read function: {0}".format(e))
 				self.close()
 				return KILL_CONNECTION
 
-		# if self.method == "POST":
+		result = self.prepare_for_write()
+		return result
 
-		# 	try:
-		# 		filename = self.qs["filename"][0]
-		# 	except Exception as e:
-		# 		self.socket.send(bytes("Туй трябва да има filename като GET param", "utf-8"))
-		# 		self.close()
-		# 		return KILL_CONNECTION
-
-		# 	try:
-		# 		data_to_write = data_received.split(b"\r\n\r\n")[1]
-		# 	except Exception as e:
-		# 		data_to_write = data_received
-
-		# 	if not self.fileHandler:
-		# 		file_path = master_root + "/uploads/" + filename
-
-		# 		if os.path.isfile(file_path):
-		# 			global file_id
-		# 			file_id += 1
-		# 			files_splitted = file_path.rsplit(".", 1)
-		# 			file_path = files_splitted[0] + "({0})".format(file_id) + "." + files_splitted[1]
-
-		# 		self.fileHandler = open(file_path, "wb")
-
-		# 	try:
-		# 		bytes_written = self.fileHandler.write(data_to_write)
-		# 	except Exception as e:
-		# 		print(e)
-
-		return CLOSE_CONNECTION	
-
-
-	def write(self):
-		#print("Im in write!")
+	def prepare_for_write(self):
 		if self.url is "":
 			if not self.data:
-				print("The socket gave no information and i can't read from it -> KILL IT")
+				print("The socket gave no information and i can't read from it -> KILL IT - prepare for write")
 				return KILL_CONNECTION
 
 			headers_bytes = self.data.split(b"\r\n\r\n")[0]
+
 			try:
 				headers = headers_bytes.decode("utf-8")
 			except Exception as e:
@@ -143,80 +122,96 @@ class MySocketWrapper():
 
 			self.getHeaders(header_lines[1:])		
 
-		#print("Im in get!")
-		if self.method == "GET":
-			if self.fileHandler is None:
+		return CLOSE_CONNECTION
+
+	def open_file(self):
+		method_or_string, first_line = getFileNameOnDisk(self.url)
 				
-				method_or_string, first_line = getFileNameOnDisk(self.url)
-				
-				if type(method_or_string) is str:
-					self.url = method_or_string
-				else:
-					self.url = method_or_string()
+		if type(method_or_string) is str:
+			self.url = method_or_string
+		else:
+			self.url = method_or_string()
 
-				self.setHeaders(first_line)
-				self.setHeaders(util.curr_date())
-				self.setHeaders(util.type_to_expire(self.url))
-				self.endHeaders()
+		self.setHeaders(first_line)
+		self.setHeaders(util.curr_date())
+		self.setHeaders(util.type_to_expire(self.url))
+		self.endHeaders()
 
-				try:
-					self.fileHandler = open(master_root + self.url, "rb")
-					#print("Отваряме файла...")
-				except Exception as e:
-					print("Unable to open the file i should read to give him the (html or etc.): {0}".format(e))
-					self.close()
-					return CLOSE_CONNECTION
+		if DEBUG:
+			print(self.method + " " + self.url + " " + first_line.split(b" ")[1].decode("utf-8"))
 
-			if self.to_where == 0:
-				try:
-					#print("Четене от файла {0}".format(self.url))
-					self.date = datetime.datetime.now()
-					while True:
-						data_to_send = self.fileHandler.read(self.buff_size_file_read)
-						self.to_send += data_to_send
-						#print("Изчетени байтове: {0}".format(len(self.to_send)))
-						if len(data_to_send) < self.buff_size_file_read:
-							#print("Отнето време за изчитане на файла:\n\t", end="")
-							#print(datetime.datetime.now()-self.date)
-							break
-				except Exception as e:
-					print("Problem with reading the file (html or etc.): {0}".format(e))
-					self.close()			
-					return CLOSE_CONNECTION
-			try:
-				if not self.sentHeaders:
-					self.socket.send(self.outputHeaders)
-					self.sentHeaders = True
-
-				all_bytes = len(self.to_send)
-				while self.to_where != all_bytes:
-					try:
-						read_bytes = self.socket.send(self.to_send[self.to_where:self.to_where+self.buff_size_file_read])
-					except Exception as e:
-						if e.errno == 11:
-							return 1
-
-						if e.errno == 32:
-							print("The Client has closed the connection prematurely!")
-							print(e)
-							self.close()
-							return CLOSE_CONNECTION
-
-						print("Unable to send the file to the socket: " + str(e))
-						self.close()
-						return CLOSE_CONNECTION
-
-					#print("Изпратени байтове: {0}-{1}/{2}".format(self.to_where, self.to_where+self.buff_size, all_bytes))
-					self.to_where += read_bytes
-					
-			except Exception as e:
-				print("Unable to send data from file to socket!\n\t{0}".format(e))
-				self.close()
-				return CLOSE_CONNECTION
-			
+		try:
+			self.fileHandler = open(master_root + self.url, "rb")
+			if DEBUG:
+				print("Отваряме файла...")
+		except Exception as e:
+			print("Unable to open the file i should read to give him the (html or etc.): {0}".format(e))
 			self.close()
 			return CLOSE_CONNECTION
 
+		return 1
+
+	def read_file(self):
+		try:
+			if DEBUG:
+				print("Четене от файла {0}".format(self.url))
+
+			while True:
+				data_to_send = self.fileHandler.read(self.buff_size_file_read)
+				if DEBUG:
+					print("I read {0} bytes\ntotal read: {1}".format(len(data_to_send), len(self.to_send)))
+				self.to_send += data_to_send
+				if len(data_to_send) < self.buff_size_file_read:
+					self.is_file_read = True
+					return 1
+
+		except Exception as e:
+			print("Problem with reading the file (html or etc.): {0}".format(e))
+			self.close()			
+			return CLOSE_CONNECTION
+
+	def write(self):
+		if self.url is "":
+			self.prepare_for_write()
+
+		if self.method == "GET":			
+			if self.fileHandler is None:
+				result = self.open_file()
+				if result == CLOSE_CONNECTION:
+					self.close()
+					return result
+
+			if not self.is_file_read:
+				result = self.read_file()
+				if result != 1:
+					self.close()
+					return result
+				
+			if not self.sentHeaders:
+				result = self.send_data_to_socket(self.outputHeaders, len(self.outputHeaders))
+				if result == SPECIAL_CONDITION:
+					self.sentHeaders = True
+					self.to_where = 0
+				
+				elif result == 1:
+					return result
+				
+				else:
+					self.close()
+					return result
+
+			result = self.send_data_to_socket(self.to_send, len(self.to_send))
+			if result == 1:
+				return 1
+
+			elif result == SPECIAL_CONDITION:
+				self.close()
+				return CLOSE_CONNECTION
+
+			else:	
+				self.close()
+				return result
+					
 		else:
 			try:
 				self.socket.send("We dont support this!".encode("utf-8"))
@@ -258,3 +253,26 @@ class MySocketWrapper():
 
 	def __str__(self):
 		return "Socket with fd: {0}".format(self.fileno())
+
+	def send_data_to_socket(self, data_to_send, size_of_data):
+		while self.to_where != size_of_data:
+			try:
+				wrote_bytes = self.socket.send(data_to_send[self.to_where:self.to_where+self.buff_size])
+			except Exception as e:
+				if e.errno == 11:
+					# we should continue to write, the buffer of the OS is full tho 
+					return 1
+
+				if e.errno == 32:
+					print("The Client has closed the connection prematurely! - send_data_to_socket function")
+					print(e)
+					self.close()
+					return CLOSE_CONNECTION
+
+				print("Unable to send the file to the socket: " + str(e) + "send_data_to_socket function")
+				self.close()
+				return CLOSE_CONNECTION
+
+			self.to_where += wrote_bytes
+
+		return SPECIAL_CONDITION

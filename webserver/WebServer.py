@@ -35,11 +35,14 @@ try:
 		# 		print(socket_wrapped)	
 		try:
 			readable, writable, exceptional = select.select(inputs, outputs, exceptions, 1)
+			if DEBUG:
+				pass
+				#print("Number of sockets i need to handle: {0}".format(len(readable) + len(writable)))
 			# print("*"*150)
 			#counter += 1
 			#print("big cycle number: {0}!".format(counter))
 		except Exception as e:
-			print("Select result: {0}".format(e))
+			#print("Select result: {0}".format(e))
 			continue
 
 		for socket_wrapped in readable:
@@ -48,14 +51,9 @@ try:
 				writable.remove(socket_wrapped)
 
 		for socket_wrapped in readable:
-			#print(readable)
 			if socket_wrapped is server_socket_wrapped:
 				try:
 					connection, client_address = server_socket_wrapped.socket.accept()
-					#print("Socket received: {0}".format(connection))
-					# counter += 1
-					# if counter % 10 == 0:
-					# 	print(counter)
 				except Exception as e:
 					print("Socket acception: {0}".format(e))
 					continue
@@ -89,7 +87,6 @@ try:
 						outputs.append(socket_wrapped)
 
 		for socket_wrapped in writable:
-			#print(writable)
 			result = socket_wrapped.write()
 			if result == CLOSE_CONNECTION or result == KILL_CONNECTION:
 				outputs.remove(socket_wrapped)
