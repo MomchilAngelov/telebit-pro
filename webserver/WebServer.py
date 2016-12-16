@@ -1,3 +1,11 @@
+'''
+	TO DO LIST:
+		Now: Reading till the socket is readable
+			Reading till \r\n\r\n
+			Reading till timeoout
+		Non-blocking read from file
+'''
+
 from SocketWrapper import *
 
 try:
@@ -36,13 +44,10 @@ try:
 		try:
 			readable, writable, exceptional = select.select(inputs, outputs, exceptions, 1)
 			if DEBUG:
-				pass
-				#print("Number of sockets i need to handle: {0}".format(len(readable) + len(writable)))
-			# print("*"*150)
-			#counter += 1
-			#print("big cycle number: {0}!".format(counter))
+				print("Number of sockets i need to handle: {0}".format(len(readable) + len(writable)))
 		except Exception as e:
-			#print("Select result: {0}".format(e))
+			if DEBUG:
+				print("Select result has exception: {0}".format(e))
 			continue
 
 		for socket_wrapped in readable:

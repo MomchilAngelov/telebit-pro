@@ -80,8 +80,10 @@ class MySocketWrapper():
 			while True:
 				data_received = self.socket.recv(self.buff_size)
 				if not data_received:
-					break
+					return self.prepare_for_write()
 				self.data += data_received
+				if b"\r\n\r\n" in self.data:
+					return self.prepare_for_write()
 		except Exception as e:
 			if e.errno == 11:
 				# Resource temporary unavailable
@@ -93,9 +95,6 @@ class MySocketWrapper():
 					print("read function: {0}".format(e))
 				self.close()
 				return KILL_CONNECTION
-
-		result = self.prepare_for_write()
-		return result
 
 	def prepare_for_write(self):
 		if self.url is "":
