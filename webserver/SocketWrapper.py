@@ -20,10 +20,10 @@ SPECIAL_CONDITION = 4
 file_id = 0
 DEBUG = 0
 
-if len(sys.argv) == 3 and sys.argv[2] == 'DEBUG':
+if len(sys.argv) == 4 and sys.argv[3] == 'DEBUG':
 	DEBUG = 1
 
-PORT = 80
+PORT = int(sys.argv[2])
 HOST = ''
 
 class MySocketWrapper():
