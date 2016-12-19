@@ -48,12 +48,9 @@ try:
 		except Exception as e:
 			if DEBUG:
 				print("Select result has exception: {0}".format(e))
-			continue
 
-		for socket_wrapped in readable:
-			if socket_wrapped in writable:
-				print("Socket both readable and writable!")
-				writable.remove(socket_wrapped)
+			print(e)
+			continue
 
 		for socket_wrapped in readable:
 			if socket_wrapped is server_socket_wrapped:
@@ -87,16 +84,13 @@ try:
 				if result == KILL_CONNECTION:
 					inputs.remove(socket_wrapped)
 
-				if result == COULD_BE_EMPTY_OR_SLOW:
-					if socket_wrapped not in outputs:
-						outputs.append(socket_wrapped)
-
 		for socket_wrapped in writable:
 			result = socket_wrapped.write()
 			if result == CLOSE_CONNECTION or result == KILL_CONNECTION:
 				outputs.remove(socket_wrapped)
 				if socket_wrapped in inputs:
 					inputs.remove(socket_wrapped)
+
 
 
 		for socket_wrapped in exceptional:

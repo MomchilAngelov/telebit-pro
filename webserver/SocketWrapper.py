@@ -9,6 +9,7 @@ import datetime
 import math
 import time
 import errno
+import fcntl
 
 from pathing_string import *
 import util
@@ -79,6 +80,8 @@ class MySocketWrapper():
 		try:
 			while True:
 				data_received = self.socket.recv(self.buff_size)
+				if DEBUG:
+					print(data_received)
 				if not data_received:
 					return self.prepare_for_write()
 				self.data += data_received
@@ -88,7 +91,8 @@ class MySocketWrapper():
 			if e.errno == 11:
 				# Resource temporary unavailable
 				# Това е еррора, ако трябва да блокне, но не блоква
-
+				if DEBUG:
+					print(e)
 				return COULD_BE_EMPTY_OR_SLOW
 			else:
 				if DEBUG:
@@ -99,7 +103,8 @@ class MySocketWrapper():
 	def prepare_for_write(self):
 		if self.url is "":
 			if not self.data:
-				print("The socket gave no information and i can't read from it -> KILL IT - prepare for write")
+				if DEBUG:
+					print("The socket gave no information and i can't read from it -> KILL IT - prepare for write")
 				return KILL_CONNECTION
 
 			headers_bytes = self.data.split(b"\r\n\r\n")[0]
@@ -140,7 +145,14 @@ class MySocketWrapper():
 			print(self.method + " " + self.url + " " + first_line.split(b" ")[1].decode("utf-8"))
 
 		try:
-			self.fileHandler = open(master_root + self.url, "rb")
+			self.fileHandler = open(master_root + self.url, "rb", os.O_NONBLOCK)
+			'''
+				If thе O_NONBLOCK flag is specified and the open() system call would result in
+				the process being blocked for some reason (e.g., waiting for carrier on a
+			    dialup line), open() returns immediately.  The descriptor remains in non-
+			    blocking mode for subsequent operations.
+		    '''				
+			
 			if DEBUG:
 				print("Отваряме файла...")
 		except Exception as e:
@@ -165,6 +177,9 @@ class MySocketWrapper():
 					return 1
 
 		except Exception as e:
+			if e.errno == 11:
+				#EAGAIN
+				return 2
 			print("Problem with reading the file (html or etc.): {0}".format(e))
 			self.close()			
 			return CLOSE_CONNECTION
@@ -182,7 +197,11 @@ class MySocketWrapper():
 
 			if not self.is_file_read:
 				result = self.read_file()
-				if result != 1:
+				if result == 1:
+					pass
+				elif result == 2:
+					return COULD_BE_EMPTY_OR_SLOW
+				else:
 					self.close()
 					return result
 				
@@ -263,12 +282,13 @@ class MySocketWrapper():
 					return 1
 
 				if e.errno == 32:
-					print("The Client has closed the connection prematurely! - send_data_to_socket function")
-					print(e)
+					if DEBUG:
+						print("The Client has closed the connection prematurely! - send_data_to_socket function - error:{0}".format(e))
 					self.close()
 					return CLOSE_CONNECTION
 
-				print("Unable to send the file to the socket: " + str(e) + "send_data_to_socket function")
+				if DEBUG:
+					print("Unable to send the file to the socket: " + str(e) + "send_data_to_socket function")
 				self.close()
 				return CLOSE_CONNECTION
 

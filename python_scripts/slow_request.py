@@ -7,7 +7,7 @@ my_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 my_sock.connect(('127.0.0.1', 80))
 
-data_array = [b'G', b'E', b'T', b' ', b'/', b' ', b'H', b'T', b'T', b'P', b'/', b'1', b'.', b'1', b'\r', b'\n']
+data_array = [b'G', b'E', b'T', b' ', b'/', b' ', b'H', b'T', b'T', b'P', b'/', b'1', b'.', b'1', b'\r', b'\n', b'\r', b'\n']
 
 for byte in data_array:
 	my_sock.send(byte)
