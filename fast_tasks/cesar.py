@@ -40,10 +40,10 @@
 # cabd mama  →  cbcb maca  →  cbdb
 
 import sys
+import copy
 
+powers = []
 alphabet = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
-alphabet_coded = {}
-already_coded = []
 
 current_unique_char = 0
 try:
@@ -67,42 +67,75 @@ for x in range(number_of_words):
 	words.append(word)
 
 max_len = 0
-words.sort()
 
 for word in words:
 	if len(word) > max_len:
 		max_len = len(word)
 
-for k in range(max_len):
-	for word in words:
-		try:
-			if word[k] not in already_coded:
-				already_coded.append(word[k])
-				alphabet_coded[word[k]] = alphabet[current_unique_char]
-				current_unique_char += 1
-		except Exception as e:
-			continue
+for word_index in range(len(words)):
+	try:
+		index_now = 0
+		while True:
+			if words[word_index][index_now] == words[word_index+1][index_now]:
+				if words[word_index][index_now] not in powers:
+					powers.append(words[word_index][index_now])
+				print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
+				index_now += 1
+				print(powers)
+				continue
+			else:
+				print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
+				if (words[word_index][index_now] not in powers) and (words[word_index+1][index_now] not in powers):
+					print("\t"*(index_now+1)+"Both not in list!")
+					powers.append(words[word_index][index_now])	
+					powers.append(words[word_index+1][index_now])
+					break
+				elif (words[word_index][index_now] not in powers) and (words[word_index+1][index_now] in powers):
+					where_to_insert = powers.index(words[word_index+1][index_now+1])
+					powers.insert(where_to_insert, words[word_index+1][index_now])
+					break
+				elif (words[word_index][index_now] in powers) and (words[word_index+1][index_now] not in powers):
+					where_to_insert = powers.index(words[word_index][index_now]) + 1
+					powers.insert(where_to_insert, words[word_index+1][index_now])
+					break
+				else:
+					should_be_smaller = powers.index(words[word_index][index_now])
+					should_be_bigger = powers.index(words[word_index+1][index_now])
+					if should_be_bigger < should_be_smaller:
+						powers.remove(words[word_index+1][index_now])
+						powers.insert(should_be_smaller, words[word_index+1][index_now])
+					break
+		print(powers)
+	except Exception as e:
+		print(e)
+		continue
 
-for k in range(current_unique_char, len(alphabet)):
-	for k in alphabet:
-		if k not in already_coded:
-			already_coded.append(k)
-			alphabet_coded[k] = alphabet[current_unique_char]
-			current_unique_char += 1
+for k in alphabet:
+	if k not in powers:
+		powers.append(k)
 
 
-cryptic_words = []
+decrypted_words = []
+
 for word in words:
-	cryptic_word = ""
-	for char in word:
-		cryptic_word += alphabet_coded[char]
-	cryptic_words.append(cryptic_word)
+	decrypted_word = ""
 
-cryptic_words_sorted = sorted(cryptic_words)
-if cryptic_words == cryptic_words_sorted:
+	for char in word:
+		where_is_in_power = powers.index(char)
+		decrypted_char = alphabet[where_is_in_power]
+		decrypted_word += decrypted_char
+
+	decrypted_words.append(decrypted_word)
+
+
+copied_dec = copy.copy(decrypted_words)
+
+decrypted_words.sort()
+
+if copied_dec == decrypted_words:
 	print("YES")
-	for key in sorted(alphabet_coded, key=alphabet_coded.get):
-		print(key, end=",")
+	for k in powers:
+		print(k, end=",")
 	print()
 else:
 	print("NO")
