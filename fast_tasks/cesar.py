@@ -39,20 +39,35 @@
 # подредени по азбучен ред (лексикографски). pa  →  ab pc  →  am mpac  →
 # cabd mama  →  cbcb maca  →  cbdb
 
+import sys
+
 alphabet = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
 alphabet_coded = {}
 already_coded = []
 
 current_unique_char = 0
+try:
+	number_of_words = int(input(""))
+except Exception as e:
+	print("Wrong input! Number of words should be a number!")
+	sys.exit(1)
 
-number_of_words = int(input("Въведи брой думи: "))
+if number_of_words < 1 or number_of_words > 100:
+	print("Wrong input! Number of words must be between 1 and 100")
+	sys.exit(1)
+
 words = []
 
 for x in range(number_of_words):
-	word = input("Въведи дума: ")
+	word = input("")
+	if len(word) < 1 or len(word) > 10:
+		print("Wrong input! Size of words must be between 1 and 10")
+		sys.exit(1)
+
 	words.append(word)
 
 max_len = 0
+words.sort()
 
 for word in words:
 	if len(word) > max_len:
