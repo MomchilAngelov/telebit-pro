@@ -45,7 +45,6 @@ import copy
 powers = []
 alphabet = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
 
-current_unique_char = 0
 try:
 	number_of_words = int(input(""))
 except Exception as e:
@@ -87,6 +86,7 @@ for word_index in range(len(words)):
 				print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
 				if (words[word_index][index_now] not in powers) and (words[word_index+1][index_now] not in powers):
 					print("\t"*(index_now+1)+"Both not in list!")
+
 					powers.append(words[word_index][index_now])	
 					powers.append(words[word_index+1][index_now])
 					break
@@ -133,7 +133,7 @@ for word in words:
 
 
 for ind in range(len(decrypted_words)):
-	print(decrypted_words[ind])
+	print(decrypted_words[ind], end="=>")
 	print(words[ind])
 
 copied_dec = copy.copy(decrypted_words)

@@ -1,6 +1,5 @@
-5
+4
 pa
 pc
 mpac
-mama
-maca
+ma
