@@ -43,6 +43,7 @@ import sys
 import copy
 
 powers = []
+random_put = []
 alphabet = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]
 
 try:
@@ -78,46 +79,43 @@ for word_index in range(len(words)):
 			if words[word_index][index_now] == words[word_index+1][index_now]:
 				if words[word_index][index_now] not in powers:
 					powers.append(words[word_index][index_now])
-				print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
+				#print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
 				index_now += 1
-				print(powers)
+				#print(powers)
 				continue
 			else:
-				print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
+				#print(index_now*"\t"+"Comparing:", words[word_index][index_now], "and", words[word_index+1][index_now])
 				if (words[word_index][index_now] not in powers) and (words[word_index+1][index_now] not in powers):
-					print("\t"*(index_now+1)+"Both not in list!")
+					# print("\t"*(index_now+1)+"Both not in list!")
 
 					powers.append(words[word_index][index_now])	
 					powers.append(words[word_index+1][index_now])
-					break
 				elif (words[word_index][index_now] not in powers) and (words[word_index+1][index_now] in powers):
 					where_to_insert = powers.index(words[word_index+1][index_now+1])
 					powers.insert(where_to_insert, words[word_index+1][index_now])
-					break
 				elif (words[word_index][index_now] in powers) and (words[word_index+1][index_now] not in powers):
 					where_to_insert = powers.index(words[word_index][index_now]) + 1
 					powers.insert(where_to_insert, words[word_index+1][index_now])
-					break
 				else:
 					should_be_smaller = powers.index(words[word_index][index_now])
 					should_be_bigger = powers.index(words[word_index+1][index_now])
 					if should_be_bigger < should_be_smaller:
-						print(powers)						
+						# print(powers)						
 						powers.remove(words[word_index][index_now])
-						print("SWAPPING!")
+						# print("SWAPPING!")
 						powers.insert(should_be_bigger, words[word_index][index_now])
-						print(powers)
-					break
-		print(powers)
+						# print(powers)
+			#print(powers)
+			break
 	except Exception as e:
-		print(e)
+		#print(e)
 		continue
 
 for k in alphabet:
 	if k not in powers:
 		powers.append(k)
 
-print(powers)
+#print(powers)
 
 decrypted_words = []
 
@@ -132,9 +130,9 @@ for word in words:
 	decrypted_words.append(decrypted_word)
 
 
-for ind in range(len(decrypted_words)):
-	print(decrypted_words[ind], end="=>")
-	print(words[ind])
+# for ind in range(len(decrypted_words)):
+# 	print(decrypted_words[ind], end="=>")
+# 	print(words[ind])
 
 copied_dec = copy.copy(decrypted_words)
 decrypted_words.sort()
