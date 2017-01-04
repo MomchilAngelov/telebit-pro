@@ -19,7 +19,7 @@ except Exception as e:
 	
 
 try:
-	server_socket.listen(1000)
+	server_socket.listen(10)
 except Exception as e:
 	print(e)
 	sys.exit(1)
@@ -34,6 +34,9 @@ counter = 0
 inputs = [server_socket_wrapped]
 outputs = []
 exceptions = []
+readable = []
+writable = []
+exceptional = []
 
 try:
 	while inputs:
@@ -45,6 +48,14 @@ try:
 			readable, writable, exceptional = select.select(inputs, outputs, exceptions, 1)
 			if DEBUG:
 				print("Number of sockets i need to handle: {0}".format(len(readable) + len(writable)))
+				print("Number of sockets i want to read from: {0}".format( len(inputs) ))
+				# if len(inputs) > 150:
+				# 	for sock in inputs:
+				# 		print(sock.data)
+				# 	sys.exit(1)
+
+				print("Number of sockets i want to write to: {0}".format(len(outputs)))
+				print("Number of sockets in the exceptional {0}".format(len(exceptional)))
 		except Exception as e:
 			if DEBUG:
 				print("Select result has exception: {0}".format(e))
@@ -108,6 +119,24 @@ try:
 			
 except KeyboardInterrupt as e:
 	print("Shutting server down...")
-	server_socket_wrapped.close()
+
+	for sock in readable:
+		sock.close()
+
+	for sock in outputs:
+		sock.close()
+
+	for sock in exceptions:
+		sock.close()
+
+	for sock in inputs:
+		sock.close()
+
+	for sock in writable:
+		sock.close()
+
+	for sock in exceptional:
+		sock.close()
+
 	print("Server is shut down...")
 	print("Number of exceptioned sockets: {0}".format(counter))

@@ -14,6 +14,7 @@ import fcntl
 from pathing_string import *
 import util
 
+SOCK_NUM = 1 #The main socket
 CLOSE_CONNECTION = 0
 KILL_CONNECTION = 2
 COULD_BE_EMPTY_OR_SLOW = 3
@@ -30,7 +31,12 @@ HOST = ''
 class MySocketWrapper():
 
 	def __init__(self, socket):
+		if DEBUG:
+			global SOCK_NUM
+			SOCK_NUM += 1
+
 		self.socket = socket
+		self.is_closed = False
 		self.buff_size = 1024 * 64
 		self.buff_size_file_read = 1024*256
 		self.url = ""
@@ -80,8 +86,8 @@ class MySocketWrapper():
 		try:
 			while True:
 				data_received = self.socket.recv(self.buff_size)
-				if DEBUG:
-					print(data_received)
+				# if DEBUG:
+				# 	print(data_received)
 				if not data_received:
 					return self.prepare_for_write()
 				self.data += data_received
@@ -92,6 +98,7 @@ class MySocketWrapper():
 				# Resource temporary unavailable
 				# Това е еррора, ако трябва да блокне, но не блоква
 				if DEBUG:
+					print("Read на SocketWrapper.py, когато се пробваме да четем, а това, от което четем, блокне...")
 					print(e)
 				return COULD_BE_EMPTY_OR_SLOW
 			else:
@@ -105,6 +112,7 @@ class MySocketWrapper():
 			if not self.data:
 				if DEBUG:
 					print("The socket gave no information and i can't read from it -> KILL IT - prepare for write")
+				self.close()
 				return KILL_CONNECTION
 
 			headers_bytes = self.data.split(b"\r\n\r\n")[0]
@@ -141,8 +149,8 @@ class MySocketWrapper():
 		self.setHeaders(util.type_to_expire(self.url))
 		self.endHeaders()
 
-		if DEBUG:
-			print(self.method + " " + self.url + " " + first_line.split(b" ")[1].decode("utf-8"))
+		# if DEBUG:
+		# 	print(self.method + " " + self.url + " " + first_line.split(b" ")[1].decode("utf-8"))
 
 		try:
 			self.fileHandler = open(master_root + self.url, "rb", os.O_NONBLOCK)
@@ -153,8 +161,8 @@ class MySocketWrapper():
 			    blocking mode for subsequent operations.
 		    '''				
 			
-			if DEBUG:
-				print("Отваряме файла...")
+			# if DEBUG:
+			# 	print("Отваряме файла...")
 		except Exception as e:
 			print("Unable to open the file i should read to give him the (html or etc.): {0}".format(e))
 			self.close()
@@ -164,13 +172,13 @@ class MySocketWrapper():
 
 	def read_file(self):
 		try:
-			if DEBUG:
-				print("Четене от файла {0}".format(self.url))
+			# if DEBUG:
+			# 	print("Четене от файла {0}".format(self.url))
 
 			while True:
 				data_to_send = self.fileHandler.read(self.buff_size_file_read)
-				if DEBUG:
-					print("I read {0} bytes\ntotal read: {1}".format(len(data_to_send), len(self.to_send)))
+				# if DEBUG:
+				# 	print("I read {0} bytes\ntotal read: {1}".format(len(data_to_send), len(self.to_send)))
 				self.to_send += data_to_send
 				if len(data_to_send) < self.buff_size_file_read:
 					self.is_file_read = True
@@ -227,7 +235,6 @@ class MySocketWrapper():
 				return CLOSE_CONNECTION
 
 			else:	
-				self.close()
 				return result
 					
 		else:
@@ -248,6 +255,12 @@ class MySocketWrapper():
 		return urllib.parse.unquote(self.url)
 
 	def close(self):
+		if DEBUG:
+			if not self.is_closed:
+				self.close = True
+				global SOCK_NUM
+				SOCK_NUM -= 1
+				print("Затворих сокет, остават още: {0}".format(SOCK_NUM))
 		try:
 			self.fileHandler.close()
 		except Exception as e:
@@ -261,7 +274,8 @@ class MySocketWrapper():
 		try:
 			self.socket.close()
 		except Exception as e:
-			pass
+			if DEBUG:
+				print("Close: {0}".format(e))
 
 	def setHeaders(self, header):
 		self.outputHeaders += header + b"\r\n"
@@ -289,6 +303,7 @@ class MySocketWrapper():
 
 				if DEBUG:
 					print("Unable to send the file to the socket: " + str(e) + "send_data_to_socket function")
+
 				self.close()
 				return CLOSE_CONNECTION
 
