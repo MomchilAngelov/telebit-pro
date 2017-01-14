@@ -34,3 +34,6 @@ with conn.cursor() as x:
 			print(e)
 			conn.rollback()
 conn.close()
+
+
+print("Making changes")
