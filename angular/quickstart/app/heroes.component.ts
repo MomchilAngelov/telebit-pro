@@ -12,7 +12,7 @@ import { HeroService } from './hero.service';
   styleUrls: [ 'heroes.component.css' ]
 })
 
-export class HeroesComponent implements OnInit { 
+export class HeroesComponent implements OnInit{ 
   constructor(private heroService: HeroService, private router: Router) { }
   
   heroes: Hero[];
