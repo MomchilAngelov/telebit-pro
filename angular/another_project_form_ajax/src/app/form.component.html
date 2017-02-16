@@ -1,0 +1,16 @@
+<div class="container">
+	<form #heroForm="ngForm">
+		<div class="form-group">
+			<label>Име</label>
+			<input type="text" class="form-control" [(ngModel)]="my_Var" name="name">
+			<p>Търсене за: {{my_Var}}</p>
+		</div>
+		<button type="submit" class="btn btn-success" (click)="alert_magic(my_Var)" >ентър</button>
+	</form>
+
+	<div *ngIf="result">
+		<p *ngFor="let repository of generateArray(result)">
+			{{reposity}}
+		</p>
+	</div>
+</div>
