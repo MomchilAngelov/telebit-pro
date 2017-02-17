@@ -1,4 +1,6 @@
 <div class="container">
+	<label>Брой на резултатите: {{filter_max_repos_and_users}}</label><br />
+	<input [(ngModel)]="filter_max_repos_and_users" />
 	<form #heroForm="ngForm">
 		<div class="form-group">
 			<label>Име</label>
@@ -8,9 +10,15 @@
 		<button type="submit" class="btn btn-success" (click)="alert_magic(my_Var)" >ентър</button>
 	</form>
 
+	<div *ngIf="result_users">
+		<p *ngFor="let user of result_users" (click) = "getDataForUser(user.repos_url)" id="{{user.id}}">
+			Потребител: {{ user.login }}
+		</p>
+	</div>
+
 	<div *ngIf="result">
-		<p *ngFor="let repository of generateArray(result)">
-			{{reposity}}
+		<p *ngFor="let repository of result" (click) = "getDataForRepo(repository)" id="{{repository.id}}">
+			Репо: {{ repository.full_name }}
 		</p>
 	</div>
 </div>
