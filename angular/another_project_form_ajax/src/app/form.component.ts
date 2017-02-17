@@ -7,6 +7,9 @@ import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/toPromise';
 
+import { Repository } from './models/repository'
+import { User } from './models/user'
+
 declare var $: any;
 
 @Component({
@@ -27,7 +30,7 @@ export class FormComponent  {
 
 	alert_magic(my_model: string){
 		let data = this.http.get(this.API_POINT_SEARCH+my_model).toPromise()
-			.then((responce)=> this.parse_result(responce));
+			.then( (responce) => this.parse_result(responce.json().items as User[]) );
 	}
 
 	clear_all_repos(){
@@ -38,31 +41,31 @@ export class FormComponent  {
 		this.result = [];
 	}
 
-	parse_result(responce: any){
+	parse_result(users: User[]){
 		this.clear_all_repos();
-		if(responce.json().items.length > this.filter_max_repos_and_users){
-			this.result_users = responce.json().items.splice(0, this.filter_max_repos_and_users);
+		if(users.length > this.filter_max_repos_and_users){
+			this.result_users = users.splice(0, this.filter_max_repos_and_users);
 		} else {
-			this.result_users = responce.json().items;
+			this.result_users = users;
 		}
 	}
 
-	parse_individual_repo(responce: any){
-		let repo = responce.json();
-		console.log(repo);
+	parse_individual_repo(repo: Repository){
 		let my_ele = $("#"+repo.id);
 
 		let parent_ul = $("<ul></ul");
 		this.addToParentUl(parent_ul, repo.full_name);
+		this.addToParentUl(parent_ul, "Линк към репото: <a target=\"_blank\" href='" + repo.html_url + "'>" + repo.html_url + "</a>");
 		this.addToParentUl(parent_ul, repo.name);
 		this.addToParentUl(parent_ul, repo.language);
 		this.addToParentUl(parent_ul, "Създадено на: " + repo.created_at);
 		this.addToParentUl(parent_ul, "Последна промяна на: " + repo.updated_at);
+		this.addToParentUl(parent_ul, "ID на собственика: " + repo.owner.id);
 
 		my_ele.after(parent_ul);
 	}
 
-	getDataForRepo(repository: any){
+	getDataForRepo(repository: Repository){
 		let index:number = this.opened_github_repos.indexOf(repository.id);
 		if (index > -1){
 			$("#"+repository.id).next().remove();
@@ -72,26 +75,25 @@ export class FormComponent  {
 
 		this.opened_github_repos.push(repository.id);
 		let data = this.http.get("https://api.github.com/repos/"+repository.full_name).toPromise()
-			.then((responce)=> this.parse_individual_repo(responce));
+			.then((responce)=> this.parse_individual_repo(responce.json() as Repository));
 	}
 
 	getDataForUser(user_repo_url: string){
-		let data = this.http.get(user_repo_url).toPromise().then((responce) => this.populateRepos(responce))
+		let data = this.http.get(user_repo_url).toPromise().then((responce) => this.populateRepos(responce.json() as Repository[]))
 	}
 
-	populateRepos(repositories: any){
+	populateRepos(repositories: Repository[]){
 		this.result_users = [];
-		let full_res = repositories.json();
-		if(full_res.length > this.filter_max_repos_and_users){
-			this.result = full_res.splice(0, this.filter_max_repos_and_users);
+		if(repositories.length > this.filter_max_repos_and_users){
+			this.result = repositories.splice(0, this.filter_max_repos_and_users);
 		} else {
-			this.result = full_res;
+			this.result = repositories;
 		}
 	}
 
 	addToParentUl(parent_ul: any, text: string){
 		let el = $("<li></li>");
-		el.text(text);
+		el.html(text);
 		parent_ul.append(el);
 	}
 
