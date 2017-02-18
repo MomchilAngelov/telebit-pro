@@ -7,8 +7,8 @@ import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/toPromise';
 
-import { Repository } from './models/repository'
-import { User } from './models/user'
+import { Repository } from '../../models/repository'
+import { User } from '../../models/user'
 
 declare var $: any;
 
