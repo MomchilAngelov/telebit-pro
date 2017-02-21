@@ -1,12 +1,40 @@
-<div class="container">
-	<a href="https://github.com/login/oauth/authorize?scope=user:email&client_id={{client_id}}">
-		Click here
-	</a>
-	to begin!
-</div>
 
-<div *ngIf="code">
-	<span>Your code for token generation is: {{code}}</span>
+<div class="container">
+	<div *ngIf="access_token == false">
+		<a href="https://github.com/login/oauth/authorize?scope={{scope}}&client_id={{client_id}}">
+			Click here
+		</a>
+		to begin!
+	</div>
+
+	<div *ngIf="code">
+		<span>Your code for token generation is: {{code}}</span>
+	</div>
+
+	<div *ngIf="access_token">
+		<span>Your access token is: {{access_token}}</span>
+	</div>
+
+	<div *ngIf="profile_ready">
+		<img src = "{{profile_picture}}" />
+		<div class='profile-div'>
+			<p>Username: {{profile_name}}</p>
+			<p>Email: {{profile_email}}</p>
+		</div>
+	</div>
+
+	<div *ngIf="personal_repos">
+		<h1>Персонални репота</h1>
+		<div class="repos">
+			<div class="repo" *ngFor="let repository of personal_repos">
+				<h2 class="Title Field">{{repository.name}}</h2>
+				<p class="Field">{{repository.created_at}}</p>
+				<p class="Field">{{repository.description}}</p>
+				<p class="Field">{{repository.language}}</p>
+				<p class="link">Линк: <a href="{{repository.html_url}}">{{repository.html_url}}</a></p>
+			</div>
+		</div>
+	</div>
 </div>
 
 <br />

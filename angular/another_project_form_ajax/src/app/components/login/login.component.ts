@@ -6,6 +6,8 @@ import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/toPromise';
 
+import { Repository } from '../../models/repository'
+
 declare var $: any;
 
 @Component({
@@ -18,8 +20,22 @@ declare var $: any;
 export class LoginComponent implements OnInit  {
 	private client_id:string = "4ca47a9bc303b55af5d2";
 	private client_secret: string = "d6ff25620e4461c2655b75f994ba8dff40508430";
+	private send_request_to_this_guy: string = "http://localhost:8888/";
+	private api_request_user: string = "https://api.github.com/user?access_token=";
+	private api_request_user_repos: string = "";
+	private scope: string = "user%20repo";
+	
 	private code:string = "";
-	private state: string = "";
+	private scopes_received: string = "";
+	private access_token: string = "";
+	private profile_ready: boolean = false;
+
+	private profile_picture: string = "";
+	private profile_email: string = "";
+	private profile_name: string = "";
+	private profile_login: string = "";
+
+	private personal_repos: Repository[];
 
 	private qs = (function(a) {
 	    if (a.length == 0) return {};
@@ -40,7 +56,6 @@ export class LoginComponent implements OnInit  {
 
 	ngOnInit() {
 		this.code = this.qs['code'];
-		this.state = this.qs['state'];
 
 		if(this.code == undefined){
 			console.log("Not yet authenticated!");
@@ -50,31 +65,62 @@ export class LoginComponent implements OnInit  {
 	}
 
 	authenticate(){
-		let search = new URLSearchParams();
-		search.set('code', this.code);
-		search.set('client_secret', this.client_secret);
-		search.set('client_id', this.client_id);
-		/*
-		let request_data = {};
-		request_data['code'] = this.code;
-		request_data['client_secret'] = this.client_secret;
-		request_data['client_id'] = this.client_id;
-		*/
-		//let request_data_string = JSON.stringify(request_data);
-		let request_data_string = search.toString();
-
-		console.log(request_data_string);
-
-		let headers = new Headers();
-		headers.set('Content-Type', 'application/x-www-form-urlencoded');
-		//headers.append("Access-Control-Allow-Origin", "*");
-		//headers.append("", value: string);
-
-
-		let data = this.http.post('https://github.com/login/oauth/access_token/', request_data_string, {headers}).toPromise().then((responce)=>this.checkResult(responce));
+		let data = this.http.get(this.send_request_to_this_guy + this.code + "/")
+			.toPromise()
+			.then((responce) => this.checkResult(responce))
+			.catch((responce) => this.handleError(responce));	
 	}
 
-	checkResult(responce: any){
-		console.log(responce);
+	fetchProfileStuff(){
+		let data = this.http.get(this.api_request_user+this.access_token)
+			.toPromise()
+			.then((responce) => this.parseProfileResults(responce))
+			.catch((responce) => this.parseProfileResults(responce));
 	}
+
+	parseProfileResults(response: any){
+		let data = response.json();
+		this.profile_picture = data.avatar_url;
+		this.profile_email = data.email;
+		this.profile_name = data.name;
+		this.profile_login = data.login;
+
+		this.api_request_user_repos = data.repos_url;
+		this.profile_ready = true;
+
+		this.parseRepos();
+	}
+
+	parseRepos(){
+		let data = this.http.get(this.api_request_user_repos)
+			.toPromise()
+			.then ( (response) => this.parsePersonalReposResults(JSON.parse(response.text()) as Repository[]) );
+	}
+
+	parsePersonalReposResultsCatcher(err: any){
+		//JSON.parse(response.text()) as Repository[]
+		alert("Error while fetching repositories...");
+		console.log(err);
+	}
+
+	parsePersonalReposResults(personalRepositories: Repository[]) {
+		this.personal_repos = personalRepositories;
+	}
+
+	checkResult(response: any){
+		let data = response.json()
+		if (data.access_token == undefined){
+			//alertBadToken();
+			return;
+		}
+
+		this.access_token = data.access_token;
+		this.scopes_received = data.scope;
+
+		this.fetchProfileStuff();
+	}
+
+	handleError(error: any){
+        console.log(error);
+    }
 }

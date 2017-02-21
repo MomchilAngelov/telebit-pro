@@ -74,12 +74,15 @@ export class FormComponent  {
 		}
 
 		this.opened_github_repos.push(repository.id);
-		let data = this.http.get("https://api.github.com/repos/"+repository.full_name).toPromise()
+		let data = this.http.get("https://api.github.com/repos/"+repository.full_name)
+			.toPromise()
 			.then((responce)=> this.parse_individual_repo(responce.json() as Repository));
 	}
 
 	getDataForUser(user_repo_url: string){
-		let data = this.http.get(user_repo_url).toPromise().then((responce) => this.populateRepos(responce.json() as Repository[]))
+		let data = this.http.get(user_repo_url)
+			.toPromise()
+			.then((responce) => this.populateRepos(responce.json() as Repository[]))
 	}
 
 	populateRepos(repositories: Repository[]){
