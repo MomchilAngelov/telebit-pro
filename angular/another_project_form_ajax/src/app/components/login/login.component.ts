@@ -71,16 +71,7 @@ export class LoginComponent implements OnInit  {
 		//headers.append("", value: string);
 
 
-		let data = this.http.post('https://github.com/login/oauth/access_token/', request_data_string, {headers}).map(r => r.json())
-		.subscribe(
-			(responce) => {
-				console.log(responce);
-			},
-			(err) => {
-				console.log("Error!");
-				console.log(err);
-			}
-		);
+		let data = this.http.post('https://github.com/login/oauth/access_token/', request_data_string, {headers}).toPromise().then((responce)=>this.checkResult(responce));
 	}
 
 	checkResult(responce: any){
