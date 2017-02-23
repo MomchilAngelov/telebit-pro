@@ -1,4 +1,4 @@
-import { User } from './user';
+import { User } from '../user/user';
 
 export class Repository {
   id: number;
@@ -10,4 +10,5 @@ export class Repository {
   html_url: string;
   description: string;
   owner: User;
+  url: string;
 }

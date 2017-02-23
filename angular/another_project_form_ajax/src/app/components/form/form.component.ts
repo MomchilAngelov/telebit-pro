@@ -7,8 +7,8 @@ import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
 import 'rxjs/add/operator/toPromise';
 
-import { Repository } from '../../models/repository'
-import { User } from '../../models/user'
+import { Repository } from '../../models/repository/repository'
+import { User } from '../../models/user/user'
 
 declare var $: any;
 
@@ -16,6 +16,7 @@ declare var $: any;
   moduleId: module.id,
   selector: 'form-selector',
   templateUrl: "form.component.html",
+  styleUrls: ["form.component.css", ]
 })
 
 @Injectable()

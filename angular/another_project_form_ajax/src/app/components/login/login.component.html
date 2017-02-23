@@ -1,4 +1,3 @@
-
 <div class="container">
 	<div *ngIf="access_token == false">
 		<a href="https://github.com/login/oauth/authorize?scope={{scope}}&client_id={{client_id}}">
@@ -16,22 +15,50 @@
 	</div>
 
 	<div *ngIf="profile_ready">
-		<img src = "{{profile_picture}}" />
+		<img src = "{{user.avatar_url}}" />
 		<div class='profile-div'>
-			<p>Username: {{profile_name}}</p>
-			<p>Email: {{profile_email}}</p>
+			<p>Username: {{user.login}}</p>
 		</div>
 	</div>
 
 	<div *ngIf="personal_repos">
-		<h1>Персонални репота</h1>
-		<div class="repos">
-			<div class="repo" *ngFor="let repository of personal_repos">
-				<h2 class="Title Field">{{repository.name}}</h2>
-				<p class="Field">{{repository.created_at}}</p>
-				<p class="Field">{{repository.description}}</p>
-				<p class="Field">{{repository.language}}</p>
-				<p class="link">Линк: <a href="{{repository.html_url}}">{{repository.html_url}}</a></p>
+		<div class="repository-selects">
+			<h1>Персонални репота</h1>
+			<div class="repos">
+				<div class="repo" *ngFor="let repository of personal_repos">
+					<h2 class="Title Field" (click)="onSelect(repository)">{{repository.name}}</h2>
+				</div>
+			</div>
+		</div>
+
+		<div *ngIf="selectedRepo" class="selected_repository">
+			<p>{{selectedRepo.id}}</p>
+			<p>{{selectedRepo.name}}</p>
+			<p>{{selectedRepo.owner.login}}</p>
+			<p>{{selectedRepo.language}}</p>
+			<p>{{selectedRepo.description}}</p>
+			<div class="repo-filesystem">
+				<div *ngIf="isFileSelected == false">
+					<button *ngIf="notRootDirectory" (click)=returnFromFolder()>Назад...</button>
+					<h3>Folders</h3>
+					<div class="folders">
+						<div class="folder" *ngFor="let folder of selectedFolders">
+							<p (click)="getFolderFromView(folder)">{{folder.name}}</p>
+						</div>
+					</div>
+
+					<h3>Files</h3>
+					<div class="files">
+						<div class="file" *ngFor="let file of selectedFiles">
+							<p (click)="fetchFile(file)">{{file.name}}</p>
+						</div>
+					</div>
+				</div>
+
+				<div *ngIf="isFileSelected">
+					<button (click)="returnFromFile()">Назад...</button>
+					<textarea>{{selectedFile.decodedContent}}</textarea>
+				</div>
 			</div>
 		</div>
 	</div>

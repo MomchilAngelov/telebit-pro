@@ -1,0 +1,17 @@
+.repository-selects {
+	width: 30%;
+	display: inline-block;
+	vertical-align: top;
+}
+
+.selected_repository {
+	width: 60%;
+	margin-left: 5%;
+	vertical-align: top;
+	display: inline-block;
+}
+
+.repository-selects h1 {
+	margin-top: 0;
+	font-size: 20px;
+}
