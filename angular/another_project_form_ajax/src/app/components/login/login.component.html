@@ -25,8 +25,8 @@
 		<div class="repository-selects">
 			<h1>Персонални репота</h1>
 			<div class="repos">
-				<div class="repo" *ngFor="let repository of personal_repos">
-					<h2 class="Title Field" (click)="onSelect(repository)">{{repository.name}}</h2>
+				<div class="repo" *ngFor="let repository of personal_repos" (click)="onSelect(repository)">
+					<h2 class="Title Field">{{repository.name}}</h2>
 				</div>
 			</div>
 		</div>
@@ -56,8 +56,9 @@
 				</div>
 
 				<div *ngIf="isFileSelected">
-					<button (click)="returnFromFile()">Назад...</button>
-					<textarea>{{selectedFile.decodedContent}}</textarea>
+					<button (click)="returnFromFile()" class="back-button">Назад...</button>
+					<textarea class="file-textarea" [(ngModel)]="selectedFile.decodedContent">{{selectedFile.decodedContent}}</textarea>
+					<button (click)="saveFileCall(selectedFile)" class="save-button">Запази промените...</button>
 				</div>
 			</div>
 		</div>

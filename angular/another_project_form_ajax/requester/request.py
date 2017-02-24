@@ -2,6 +2,7 @@ import tornado.ioloop
 import tornado.web
 
 from urllib import parse, request
+import json, os, shortuuid, sys
 
 class MainHandler(tornado.web.RequestHandler):
 	def initialize(self):
@@ -24,11 +25,46 @@ class MainHandler(tornado.web.RequestHandler):
 			my_request.add_header('Accept', 'application/json')
 			responce = request.urlopen(my_request)
 			#print(responce.read())
-			self.write(responce.read())		
+			self.write(responce.read())
+
+	def post(self, vals):
+		print("Here!")
+		data = json.loads(self.request.body.decode("utf-8"))
+		print("Here!123")
+		safe_name = shortuuid.uuid()
+
+		try:
+			os.system("mkdir /tmp/request/")
+		except Exception as e:
+			pass
+
+		with open("/tmp/request/"+safe_name, "w+") as f:
+			f.write(data["text"])
+
+
+		p = os.popen("git hash-object {0}".format("/tmp/request/"+safe_name),"r")
+		res = ""
+		while 1:
+			line = p.readline()
+			if not line:
+				break
+			res += line
+		print("Value of result:", res)
+
+		self.write(res.encode("utf-8"))
+
+	def options(self, vals):
+		self.set_header('Access-Control-Allow-Origin', '*')
+		self.clear_header('Content-Type')
+		self.clear_header('Content-Length')
+		self.set_header('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS');
+		self.set_header('Access-Control-Allow-Headers', 'accept, content-type');
+
 
 def make_app():
 	return tornado.web.Application([
 		(r"/(.*)/", MainHandler),
+		(r"/generate-sha1-github-style/", MainHandler)
 	])
 
 if __name__ == "__main__":

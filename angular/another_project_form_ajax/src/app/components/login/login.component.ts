@@ -83,18 +83,19 @@ export class LoginComponent implements OnInit  {
 		let data = this.http.get(this.api_request_single_repository + this.user.login + "/"
 			 + this.selectedRepo.name + "/contents/")
 		.toPromise()
-		.then((responce) => this.parseResponceFromFolder(responce.json() as File[]))
-		.catch(function(responce){
-			console.log(responce);
+		.then((response) => this.parseResponceFromFolder(response, response.json() as File[]))
+		.catch(function(response){
+			console.log(response);
 		})
 	}
 
-	parseResponceFromFolder(files: File[]){
+	parseResponceFromFolder(response:any, files: File[]){
 		this.isFileSelected = false;
 		this.selectedFile = undefined;
 		this.selectedFolders = [];
 		this.selectedFiles = [];
 		for (var i = files.length - 1; i >= 0; i--) {
+			console.log(files[i]);
 			if(files[i].size == 0){
 				this.selectedFolders.push(files[i]);
 			} else {
@@ -107,7 +108,7 @@ export class LoginComponent implements OnInit  {
 	getFolder(directory: Directory){
 		let data = this.http.get(directory.url)
 		.toPromise()
-		.then((response) => this.parseResponceFromFolder(response.json() as File[]))
+		.then((response) => this.parseResponceFromFolder(response, response.json() as File[]))
 		.catch(function(response){
 			console.log(response);
 		});
@@ -210,5 +211,44 @@ export class LoginComponent implements OnInit  {
 
 	handleError(error: any){
         console.log(error);
+    }
+
+    saveFileCall(file: File){
+    	let data = this.http.post("http://localhost:8888/generate-sha1-github-style/", JSON.stringify({"text": file.decodedContent}))
+	    	.toPromise()
+	    	.then((response) => this.saveFile(response, this.selectedFile))
+	    	.catch(function(response){
+	    		console.log("Calling from error of saveFileCall...");
+	    		console.log(response);
+	    	});
+    }
+
+    saveFile(response: any, file: File){
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+
+		let options = new RequestOptions({ headers: headers });
+
+    	let body = JSON.stringify({
+    		//sha: file.sha,
+			sha: response._body,
+    		path: file.url,
+    		message: "Updaing!",
+    		content: btoa(file.decodedContent),
+   		});
+
+    	console.log(body);
+
+    	let data = this.http.put(file.url, body, options)
+    	.toPromise()
+    	.then((response) => this.saveFileComplete(response, file))
+    	.catch(function(response){
+    		console.log("Called from the catch section of saveFile request to update the file...");
+    		console.log(response);
+    	})
+    }
+
+    saveFileComplete(response: any, file: File){
+    	alert('Файла беше запазен успешно!\n'+file.html_url);
     }
 }
