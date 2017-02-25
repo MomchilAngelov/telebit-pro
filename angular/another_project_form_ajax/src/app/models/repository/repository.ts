@@ -11,4 +11,5 @@ export class Repository {
   description: string;
   owner: User;
   url: string;
+  contents_url: string;
 }

@@ -26,6 +26,7 @@ export class LoginComponent implements OnInit  {
 	private client_secret: string = "d6ff25620e4461c2655b75f994ba8dff40508430";
 	private send_request_to_this_guy: string = "http://localhost:8888/";
 	private api_request_user: string = "https://api.github.com/user?access_token=";
+	private api_request_user_without_token_in_url: string = "https://api.github.com/user";
 	private api_request_user_repos: string = "";
 	private api_request_single_repository: string = "https://api.github.com/repos/";
 
@@ -44,11 +45,14 @@ export class LoginComponent implements OnInit  {
 
 	//In the case of an empty folder...
 	private lastDirectory: Directory;
+	private currentDirectory: Directory;
 
 	private personal_repos: Repository[];
 	private selectedRepo: Repository;
 	private selectedFolders: Directory[] = [];
 	private selectedFiles: File[] = [];
+	private newFile: File;
+	private newFileSelected: boolean = false;
 
 	private qs = (function(a) {
 	    if (a.length == 0) return {};
@@ -80,8 +84,12 @@ export class LoginComponent implements OnInit  {
 	onSelect(repository: Repository) {
 		this.depth = 0;
 		this.selectedRepo = repository;
-		let data = this.http.get(this.api_request_single_repository + this.user.login + "/"
-			 + this.selectedRepo.name + "/contents/")
+		let pathToContentRepo = this.api_request_single_repository + this.user.login + "/"
+			 + this.selectedRepo.name + "/contents/"
+
+		this.currentDirectory = new Directory();
+		this.currentDirectory.url = pathToContentRepo;
+		let data = this.http.get(pathToContentRepo)
 		.toPromise()
 		.then((response) => this.parseResponceFromFolder(response, response.json() as File[]))
 		.catch(function(response){
@@ -89,13 +97,22 @@ export class LoginComponent implements OnInit  {
 		})
 	}
 
+	checkForUpdates(){
+		return !(this.isFileSelected || this.newFileSelected);
+	}
+
+	reloadDirectory(){
+		this.getFolder(this.currentDirectory);
+	}
+
 	parseResponceFromFolder(response:any, files: File[]){
 		this.isFileSelected = false;
 		this.selectedFile = undefined;
+		this.newFile = undefined
+    	this.newFileSelected = false;
 		this.selectedFolders = [];
 		this.selectedFiles = [];
 		for (var i = files.length - 1; i >= 0; i--) {
-			console.log(files[i]);
 			if(files[i].size == 0){
 				this.selectedFolders.push(files[i]);
 			} else {
@@ -117,6 +134,7 @@ export class LoginComponent implements OnInit  {
 	getFolderFromView(directory: Directory){
 		this.depth += 1;
 		this.getFolder(directory);
+		this.currentDirectory = directory;
 		this.notRootDirectory = true;
 
 		let temp = new Directory();
@@ -133,6 +151,9 @@ export class LoginComponent implements OnInit  {
 
 	returnFromFile(){
 		this.isFileSelected = false;
+		this.selectedFile = undefined;
+		this.newFile = undefined
+    	this.newFileSelected = false;
 	}
 
 	returnFromFolder(){
@@ -212,16 +233,17 @@ export class LoginComponent implements OnInit  {
 	handleError(error: any){
         console.log(error);
     }
-
-    saveFileCall(file: File){
-    	let data = this.http.post("http://localhost:8888/generate-sha1-github-style/", JSON.stringify({"text": file.decodedContent}))
-	    	.toPromise()
-	    	.then((response) => this.saveFile(response, this.selectedFile))
-	    	.catch(function(response){
-	    		console.log("Calling from error of saveFileCall...");
-	    		console.log(response);
-	    	});
-    }
+	
+	saveFileCall(file: File){
+		let data = this.http.post("http://localhost:8888/generate-sha1-github-style/",
+			 JSON.stringify({"text": btoa(encodeURIComponent(file.decodedContent))}))
+			.toPromise()
+			.then((response) => this.saveFile(response, this.selectedFile))
+			.catch(function(response){
+				console.log("Calling from error of saveFileCall...");
+				console.log(response);
+			});
+	}
 
     saveFile(response: any, file: File){
     	let headers = new Headers();
@@ -230,25 +252,113 @@ export class LoginComponent implements OnInit  {
 		let options = new RequestOptions({ headers: headers });
 
     	let body = JSON.stringify({
-    		//sha: file.sha,
-			sha: response._body,
+    		sha: file.sha,
+			//sha: response._body,
     		path: file.url,
     		message: "Updaing!",
-    		content: btoa(file.decodedContent),
+    		content: btoa(encodeURIComponent(file.decodedContent)),
    		});
 
     	console.log(body);
 
     	let data = this.http.put(file.url, body, options)
+	    	.toPromise()
+	    	.then((response) => this.saveFileComplete(response.json().content as File, file))
+	    	.catch(function(response){
+	    		console.log("Called from the catch section of saveFile request to update the file...");
+	    		console.log(response);
+	    	})
+    }
+
+    saveFileComplete(request_return_file: File, file: File){
+    	file.sha = request_return_file.sha;
+    	this.reloadDirectory();
+    	alert('Файла беше запазен успешно!\n'+file.html_url);
+    }
+
+    createFile(){
+    	let file = new File();
+    	file.decodedContent = "Съдържание на новия файл...";
+    	file.name = "Име на новия файл...";
+    
+		this.newFile = file;
+    	this.newFileSelected = true;	
+    }
+
+    createFileCall(file: File){
+    	console.log(this.currentDirectory.url);
+    	
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+		let options = new RequestOptions({ headers: headers });
+
+		console.log(file);
+		console.log(this.currentDirectory.url + file.name);
+
+    	let body = JSON.stringify({
+    		path: this.currentDirectory.url + file.name,
+    		message: "Creating new file with the help of the github api...",
+    		content: btoa(encodeURIComponent(file.decodedContent)),
+   		});
+
+    	let data = this.http.put(this.currentDirectory.url + file.name, body, options)
     	.toPromise()
-    	.then((response) => this.saveFileComplete(response, file))
+    	.then((response) => this.createdNewFile(response))
     	.catch(function(response){
-    		console.log("Called from the catch section of saveFile request to update the file...");
+    		console.log(response);
+    	})
+
+    }
+
+    createdNewFile(response: any){
+    	this.reloadDirectory();
+    	console.log(response);
+    	alert("Successfull New File GENERATION!");
+    }
+
+    deleteFile(file: File){
+    	let body = JSON.stringify({
+    		path: file.url,
+    		message: "Deleting a file with the help of the github api...",
+    		sha: file.sha
+    	});
+
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+		let options = new RequestOptions({ headers: headers, method: "DELETE", body: body });
+
+    	let data = this.http.request(file.url, options)
+    	.toPromise()
+    	.then((response)=>this.deletedFileSuccess(response))
+    	.catch(function (response) {
     		console.log(response);
     	})
     }
 
-    saveFileComplete(response: any, file: File){
-    	alert('Файла беше запазен успешно!\n'+file.html_url);
+    deletedFileSuccess(response: any){
+    	console.log(response);
+    	alert("File successfully deleted...");
+    	this.reloadDirectory();
+    }
+
+    updateUserInformation(user: User){
+    	let body = JSON.stringify(user);
+
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+		let options = new RequestOptions({ headers: headers, method: "PATCH", body: body });
+
+    	let data = this.http.request(this.api_request_user_without_token_in_url, options)
+    	.toPromise()
+    	.then((response) => this.updateUserSuccess(response))
+    	.catch(function(response){
+    		console.log(response);
+    	})
+    	console.log(user.name);
+    }
+
+    updateUserSuccess(response: any){
+    	console.log(response);
+    	alert("User was updated successfully!...");
     }
 }

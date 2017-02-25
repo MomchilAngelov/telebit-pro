@@ -28,9 +28,7 @@ class MainHandler(tornado.web.RequestHandler):
 			self.write(responce.read())
 
 	def post(self, vals):
-		print("Here!")
 		data = json.loads(self.request.body.decode("utf-8"))
-		print("Here!123")
 		safe_name = shortuuid.uuid()
 
 		try:
@@ -38,9 +36,8 @@ class MainHandler(tornado.web.RequestHandler):
 		except Exception as e:
 			pass
 
-		with open("/tmp/request/"+safe_name, "w+") as f:
+		with open("/tmp/request/"+safe_name, "w") as f:
 			f.write(data["text"])
-
 
 		p = os.popen("git hash-object {0}".format("/tmp/request/"+safe_name),"r")
 		res = ""
@@ -49,7 +46,10 @@ class MainHandler(tornado.web.RequestHandler):
 			if not line:
 				break
 			res += line
-		print("Value of result:", res)
+
+		print("Body of request:", data["text"])
+		print("Value of gtihub sha:", res)
+		os.system("rm /tmp/request/{0}".format(safe_name))
 
 		self.write(res.encode("utf-8"))
 

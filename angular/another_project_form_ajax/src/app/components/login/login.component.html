@@ -17,7 +17,14 @@
 	<div *ngIf="profile_ready">
 		<img src = "{{user.avatar_url}}" />
 		<div class='profile-div'>
-			<p>Username: {{user.login}}</p>
+			<p>Потребителско име: <input [(ngModel)] = "user.login" value='{{user.login}}' /></p>
+			<p>Имейл: <input [(ngModel)] = "user.email" value='{{user.email}}' /></p>
+			<p>Сайт на блога: <input [(ngModel)] = "user.blog" value='{{user.blog}}' /></p>
+			<p>Място на затвор: <input [(ngModel)] = "user.company" value='{{user.company}}' /></p>
+			<p>Място на препитание: <input [(ngModel)] = "user.location" value='{{user.location}}' /></p>
+			<p>Става ли за работа: <input [(ngModel)] = "user.hireable" value='{{user.hireable}}' /></p>
+			<p>Кратко описание: <input [(ngModel)] = "user.bio" value='{{user.bio}}' /></p>
+			<button (click)=updateUserInformation(user) class="save-button">Запази промяната...</button>
 		</div>
 	</div>
 
@@ -38,7 +45,7 @@
 			<p>{{selectedRepo.language}}</p>
 			<p>{{selectedRepo.description}}</p>
 			<div class="repo-filesystem">
-				<div *ngIf="isFileSelected == false">
+				<div *ngIf="checkForUpdates()">
 					<button *ngIf="notRootDirectory" (click)=returnFromFolder()>Назад...</button>
 					<h3>Folders</h3>
 					<div class="folders">
@@ -51,6 +58,11 @@
 					<div class="files">
 						<div class="file" *ngFor="let file of selectedFiles">
 							<p (click)="fetchFile(file)">{{file.name}}</p>
+							<span (click)="deleteFile(file)">Изтрий файла...</span>
+						</div>
+
+						<div class="new_file">
+							<p (click)="createFile()">Нов файл...</p>
 						</div>
 					</div>
 				</div>
@@ -59,6 +71,13 @@
 					<button (click)="returnFromFile()" class="back-button">Назад...</button>
 					<textarea class="file-textarea" [(ngModel)]="selectedFile.decodedContent">{{selectedFile.decodedContent}}</textarea>
 					<button (click)="saveFileCall(selectedFile)" class="save-button">Запази промените...</button>
+				</div>
+
+				<div *ngIf="newFileSelected">
+					<button (click)="returnFromFile()" class="back-button">Назад...</button>
+					<input class = "file-input" [(ngModel)]="newFile.name" />
+					<textarea class="file-textarea" [(ngModel)]="newFile.decodedContent">{{newFile.decodedContent}}</textarea>
+					<button (click)="createFileCall(newFile)" class="save-button">Създай файла...</button>
 				</div>
 			</div>
 		</div>
