@@ -1,6 +1,7 @@
 .repos {
 	margin-top: 25px;
-	border: 2px solid black;
+	border: 2px solid #2c2525;
+    background-color: rgb(242,242,242);
 }
 
 .repository-selects {
@@ -10,23 +11,22 @@
 }
 
 .repo {
-    width: 10%;
+    //width: 10%;
     display: inline-block;
     vertical-align: top;
-    margin: 1%;
     word-wrap: break-word;
     cursor: pointer;
-    border-radius: 25px;
     padding: 10px;
-    -webkit-transition: all 2s ease-out;
-    transition: all 2s ease-out;
+    //-webkit-transition: all 2s ease-out;
+    //transition: all 2s ease-out;
     text-align: center;
     position: relative;
+    background-color: rgb(242,242,242);
 }
 
 .repo h2 {
 	margin-top: 10px;
-	font-size: 12px;
+	font-size: 16px;
 }
 
 .selected_repository {
@@ -36,13 +36,23 @@
 	display: inline-block;
 }
 
+.selected_repo_overview_wrapper {
+    text-align: center;
+}
+
+.selected_repo_overview {
+	display: inline-block;
+    font-size: 20px;
+}
+
 .repository-selects h1 {
 	margin-top: 0;
 	font-size: 20px;
 }
 
 .repo:hover {
-	background-color: #f993ff;
+	background-color: #317D8D;
+	color: white;
 }
 
 .back-button, .svae-button {
@@ -58,4 +68,12 @@
 .file p {
 	display: inline-block;
 	margin-right: 15px;
+}
+
+.plus {
+	font-size: 38px;
+}
+
+.folder p {
+	display: inline-block;
 }

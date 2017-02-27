@@ -24,7 +24,7 @@ declare var $: any;
 export class LoginComponent implements OnInit  {
 	private client_id:string = "4ca47a9bc303b55af5d2";
 	private client_secret: string = "d6ff25620e4461c2655b75f994ba8dff40508430";
-	private send_request_to_this_guy: string = "http://localhost:8888/";
+	private send_request_to_this_guy: string = "http://127.0.0.1:8888/";
 	private api_request_user: string = "https://api.github.com/user?access_token=";
 	private api_request_user_without_token_in_url: string = "https://api.github.com/user";
 	private api_request_user_repos: string = "";
@@ -235,7 +235,7 @@ export class LoginComponent implements OnInit  {
     }
 	
 	saveFileCall(file: File){
-		let data = this.http.post("http://localhost:8888/generate-sha1-github-style/",
+		let data = this.http.post(this.send_request_to_this_guy + "generate-sha1-github-style/",
 			 JSON.stringify({"text": btoa(encodeURIComponent(file.decodedContent))}))
 			.toPromise()
 			.then((response) => this.saveFile(response, this.selectedFile))

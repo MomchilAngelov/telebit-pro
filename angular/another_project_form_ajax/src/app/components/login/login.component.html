@@ -35,28 +35,35 @@
 				<div class="repo" *ngFor="let repository of personal_repos" (click)="onSelect(repository)">
 					<h2 class="Title Field">{{repository.name}}</h2>
 				</div>
+				<div class="repo" (click)="createNewRepository">
+					<i class="fa fa-plus-circle fa-6 plus" aria-hidden="true"></i>
+				</div>
 			</div>
 		</div>
 
 		<div *ngIf="selectedRepo" class="selected_repository">
-			<p>{{selectedRepo.id}}</p>
-			<p>{{selectedRepo.name}}</p>
-			<p>{{selectedRepo.owner.login}}</p>
-			<p>{{selectedRepo.language}}</p>
-			<p>{{selectedRepo.description}}</p>
+			<div class="selected_repo_overview_wrapper">
+				<!-- <p>{{selectedRepo.id}}</p> -->
+				<p class="selected_repo_overview">Име на репото: {{selectedRepo.name}}</p>
+				<p class="selected_repo_overview">Притежател на репото: {{selectedRepo.owner.login}}</p>
+				<br />
+				<p class="selected_repo_overview">Основен език на писане на репото: {{selectedRepo.language}}</p>
+				<p class="selected_repo_overview">Описание на репото: {{selectedRepo.description}}</p>
+			</div>
+
 			<div class="repo-filesystem">
 				<div *ngIf="checkForUpdates()">
 					<button *ngIf="notRootDirectory" (click)=returnFromFolder()>Назад...</button>
-					<h3>Folders</h3>
 					<div class="folders">
 						<div class="folder" *ngFor="let folder of selectedFolders">
+							<i class="fa fa-folder" aria-hidden="true"></i>
 							<p (click)="getFolderFromView(folder)">{{folder.name}}</p>
 						</div>
 					</div>
 
-					<h3>Files</h3>
 					<div class="files">
 						<div class="file" *ngFor="let file of selectedFiles">
+							<i class="fa fa-file" aria-hidden="true"></i>
 							<p (click)="fetchFile(file)">{{file.name}}</p>
 							<span (click)="deleteFile(file)">Изтрий файла...</span>
 						</div>
