@@ -12,4 +12,4 @@ import { FormComponent }  from './components/form/form.component';
   declarations: [ AppComponent, FormComponent , LoginComponent],
   bootstrap:    [ AppComponent ]
 })
-export class AppModule { }
+export class AppModule {}

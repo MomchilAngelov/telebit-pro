@@ -77,3 +77,23 @@
 .folder p {
 	display: inline-block;
 }
+
+.modal {
+	display: inline-block;
+	left: 25%;
+	width: 50%;
+	top: 10%;
+	text-align: center;
+	background-color: rgb(255, 204, 204);
+	border-radius: 15px;
+	height: 123px;
+}
+
+.heading {
+	margin-top: 33px;
+}
+
+.close {
+	margin-top: 12px;
+	margin-right: 15px;
+}

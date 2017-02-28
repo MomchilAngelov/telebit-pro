@@ -14,34 +14,50 @@
 		<span>Your access token is: {{access_token}}</span>
 	</div>
 
-	<div *ngIf="profile_ready">
-		<img src = "{{user.avatar_url}}" />
-		<div class='profile-div'>
-			<p>Потребителско име: <input [(ngModel)] = "user.login" value='{{user.login}}' /></p>
-			<p>Имейл: <input [(ngModel)] = "user.email" value='{{user.email}}' /></p>
-			<p>Сайт на блога: <input [(ngModel)] = "user.blog" value='{{user.blog}}' /></p>
-			<p>Място на затвор: <input [(ngModel)] = "user.company" value='{{user.company}}' /></p>
-			<p>Място на препитание: <input [(ngModel)] = "user.location" value='{{user.location}}' /></p>
-			<p>Става ли за работа: <input [(ngModel)] = "user.hireable" value='{{user.hireable}}' /></p>
-			<p>Кратко описание: <input [(ngModel)] = "user.bio" value='{{user.bio}}' /></p>
-			<button (click)=updateUserInformation(user) class="save-button">Запази промяната...</button>
+	<div class="modal" *ngIf="error">
+		<div class="close" (click)="closeModal()">X</div>
+		<div class="heading"><h2>{{modal_heading}}</h2></div>
+		<div class="content">
+			<p>{{modal_body}}</p>
 		</div>
 	</div>
 
+	<!-- PROFILE -->
+	<div *ngIf="profile_ready">
+		<img src = "{{user.avatar_url}}" />
+		<div class='profile-div'>
+			<p>Потребителско име: <input [(ngModel)] = "user.login" value='{{user.login}}' [readonly] = "!disabler.login" (click)="disableThat('login')" /></p>
+			<p>Имейл: <input [(ngModel)] = "user.email" value='{{user.email}}' [readonly] = "!disabler.email" (click)="disableThat('email')" /></p>
+			<p>Сайт на блога: <input [(ngModel)] = "user.blog" value='{{user.blog}}' [readonly] = "!disabler.blog" (click)="disableThat('blog')" /></p>
+			<p>Място на затвор: <input [(ngModel)] = "user.company" value='{{user.company}}' [readonly] = "!disabler.company" (click)="disableThat('company')" /></p>
+			<p>Място на препитание: <input [(ngModel)] = "user.location" value='{{user.location}}' [readonly] = "!disabler.location" (click)="disableThat('location')" /></p>
+			<!-- <p>Става ли за работа: <input [(ngModel)] = "user.hireable" value='{{user.hireable}}' [readonly] = "!disabler.hireable" (click)="disableThat('hireable')" /></p> -->
+			<p>Кратко описание: <input [(ngModel)] = "user.bio" value='{{user.bio}}' [readonly] = "!disabler.bio" (click)="disableThat('bio')" /></p>
+			<button (click)=updateUserInformation(user) class="save-button">Запази промяната...</button>
+		</div>
+	</div>
+	<!-- /PROFILE -->
+
+	<!-- PERSONAL REPOSITORIES WRAPPER -->
 	<div *ngIf="personal_repos">
+		<!-- PERSONAL REPOSITORIES -->
+		
 		<div class="repository-selects">
 			<h1>Персонални репота</h1>
 			<div class="repos">
 				<div class="repo" *ngFor="let repository of personal_repos" (click)="onSelect(repository)">
 					<h2 class="Title Field">{{repository.name}}</h2>
 				</div>
-				<div class="repo" (click)="createNewRepository">
+				<div class="repo" (click)="modal.open()">
 					<i class="fa fa-plus-circle fa-6 plus" aria-hidden="true"></i>
 				</div>
 			</div>
 		</div>
+		<!-- /PERSONAL REPOSITORIES -->
 
+		<!-- SELECTED REPOSITORY -->
 		<div *ngIf="selectedRepo" class="selected_repository">
+			<!-- INFORMATION FOR REPOSITORY -->
 			<div class="selected_repo_overview_wrapper">
 				<!-- <p>{{selectedRepo.id}}</p> -->
 				<p class="selected_repo_overview">Име на репото: {{selectedRepo.name}}</p>
@@ -50,7 +66,9 @@
 				<p class="selected_repo_overview">Основен език на писане на репото: {{selectedRepo.language}}</p>
 				<p class="selected_repo_overview">Описание на репото: {{selectedRepo.description}}</p>
 			</div>
+			<!-- /INFORMATION FOR REPOSITORY -->
 
+			<!-- CONTENT OF REPOSITORY -->
 			<div class="repo-filesystem">
 				<div *ngIf="checkForUpdates()">
 					<button *ngIf="notRootDirectory" (click)=returnFromFolder()>Назад...</button>
@@ -87,8 +105,11 @@
 					<button (click)="createFileCall(newFile)" class="save-button">Създай файла...</button>
 				</div>
 			</div>
+			<!-- /CONTENT OF REPOSITORY -->
 		</div>
+		<!-- /SELECTED REPOSITORY -->
 	</div>
+	<!-- /PERSONAL REPOSITORIES WRAPPER -->
 </div>
 
 <br />

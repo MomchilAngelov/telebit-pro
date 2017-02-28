@@ -10,6 +10,7 @@ import { Repository } from '../../models/repository/repository';
 import { User } from '../../models/user/user';
 import { Directory } from '../../models/directory/directory';
 import { File } from '../../models/file/file';
+import { Profile_click_disabler } from '../../models/profile_clicker/profile_clicker';
 
 declare var $: any;
 
@@ -32,6 +33,10 @@ export class LoginComponent implements OnInit  {
 
 	private scope: string = "user%20repo";
 	
+	private modal_heading: string = "";
+	private modal_body: string = "";
+	private error: boolean = false;
+
 	private code:string = "";
 	private scopes_received: string = "";
 	private access_token: string = "";
@@ -53,6 +58,8 @@ export class LoginComponent implements OnInit  {
 	private selectedFiles: File[] = [];
 	private newFile: File;
 	private newFileSelected: boolean = false;
+	private disabler: Profile_click_disabler;
+
 
 	private qs = (function(a) {
 	    if (a.length == 0) return {};
@@ -79,6 +86,7 @@ export class LoginComponent implements OnInit  {
 		} else {
 			this.authenticate();
 		}
+		this.disabler = new Profile_click_disabler();
 	}
 
 	onSelect(repository: Repository) {
@@ -124,10 +132,10 @@ export class LoginComponent implements OnInit  {
 
 	getFolder(directory: Directory){
 		let data = this.http.get(directory.url)
-		.toPromise()
-		.then((response) => this.parseResponceFromFolder(response, response.json() as File[]))
-		.catch(function(response){
-			console.log(response);
+			.toPromise()
+			.then((response) => this.parseResponceFromFolder(response, response.json() as File[]))
+			.catch(function(response){
+				console.log(response);
 		});
 	}
 
@@ -220,13 +228,14 @@ export class LoginComponent implements OnInit  {
 	checkResult(response: any){
 		let data = response.json()
 		if (data.access_token == undefined){
-			//alertBadToken();
+			console.log("bad token...");
+			this.modal_heading = "Error in authentication...";
+			this.modal_body = "Имаше проблем с автентикацията Ви...";
+			this.error = true;
 			return;
 		}
-
 		this.access_token = data.access_token;
 		this.scopes_received = data.scope;
-
 		this.fetchProfileStuff();
 	}
 
@@ -295,6 +304,8 @@ export class LoginComponent implements OnInit  {
 		console.log(file);
 		console.log(this.currentDirectory.url + file.name);
 
+		//btoa(file.decodedContent);
+
     	let body = JSON.stringify({
     		path: this.currentDirectory.url + file.name,
     		message: "Creating new file with the help of the github api...",
@@ -361,4 +372,20 @@ export class LoginComponent implements OnInit  {
     	console.log(response);
     	alert("User was updated successfully!...");
     }
+
+    disableThat(whom: string){
+    	//console.log("this.disabler."+whom + "=!this.disabler."+whom);
+    	eval("this.disabler."+whom + "=!this.disabler."+whom);
+    }
+
+    createNewRepository(){
+    	alert("Create new Repo...");
+    }
+
+    closeModal(){
+    	this.error = false;
+    	this.modal_heading = "";
+    	this.modal_body = "";
+    }
+
 }
