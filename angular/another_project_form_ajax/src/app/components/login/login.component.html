@@ -1,4 +1,6 @@
 <div class="container">
+	<button *ngIf="user" (click)="deleteCookies()">Logout</button>
+	
 	<div *ngIf="access_token == false">
 		<a href="https://github.com/login/oauth/authorize?scope={{scope}}&client_id={{client_id}}">
 			Click here
@@ -14,13 +16,50 @@
 		<span>Your access token is: {{access_token}}</span>
 	</div>
 
-	<div class="modal" *ngIf="error">
+	<!-- Error -->
+	<div class="modal error-modal" *ngIf="error">
 		<div class="close" (click)="closeModal()">X</div>
 		<div class="heading"><h2>{{modal_heading}}</h2></div>
 		<div class="content">
 			<p>{{modal_body}}</p>
 		</div>
 	</div>
+	<!-- /Error -->
+
+
+	<!-- Create Repository -->
+	<div class="modal creation-modal" *ngIf="createRepositoryFlag">
+		<div class="close" (click)="closeRepositoryModal()">X</div>
+		<div class="heading"><h2>Създаване на ново repository</h2></div>
+		
+		<div class="content">
+			<h6>Име на репото</h6>
+			<input #name /><br />
+			<h6>Описание на репото</h6>
+			<input #description><br />
+		</div>
+		
+		<button class="btn save-button" (click)="createNewRepository(name.value, description.value)">
+			Create Repo
+		</button>
+	</div>
+	<!-- /Create Repository -->
+
+	<!-- Create Directory -->
+	<div class="modal creation-modal" *ngIf="createDirectoryFlag">
+		<div class="close" (click)="closeDirectoryModal()">X</div>
+		<div class="heading"><h2>Създаване на нова директория /папка/</h2></div>
+		
+		<div class="content">
+			<h6>Име на папката</h6>
+			<input #name /><br />
+		</div>
+		<button class="btn save-button" (click)="createNewDirectory(name.value)">
+			Create Directory
+		</button>
+	</div>
+	<!-- /Create Directory -->
+
 
 	<!-- PROFILE -->
 	<div *ngIf="profile_ready">
@@ -48,7 +87,7 @@
 				<div class="repo" *ngFor="let repository of personal_repos" (click)="onSelect(repository)">
 					<h2 class="Title Field">{{repository.name}}</h2>
 				</div>
-				<div class="repo" (click)="modal.open()">
+				<div class="repo" (click)="initNewRepoCreation()">
 					<i class="fa fa-plus-circle fa-6 plus" aria-hidden="true"></i>
 				</div>
 			</div>
@@ -57,6 +96,7 @@
 
 		<!-- SELECTED REPOSITORY -->
 		<div *ngIf="selectedRepo" class="selected_repository">
+			<button (click)="deleteRepository(selectedRepo)" class="btn delete-btn">Изтрий хранилището...</button>
 			<!-- INFORMATION FOR REPOSITORY -->
 			<div class="selected_repo_overview_wrapper">
 				<!-- <p>{{selectedRepo.id}}</p> -->
@@ -77,6 +117,11 @@
 							<i class="fa fa-folder" aria-hidden="true"></i>
 							<p (click)="getFolderFromView(folder)">{{folder.name}}</p>
 						</div>
+
+						<div class="new_folder">
+							<p (click)="createDirectory()">Нова директория...</p>
+						</div>
+
 					</div>
 
 					<div class="files">

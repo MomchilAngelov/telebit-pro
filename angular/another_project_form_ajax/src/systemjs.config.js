@@ -23,6 +23,7 @@
       '@angular/router': 'npm:@angular/router/bundles/router.umd.js',
       '@angular/forms': 'npm:@angular/forms/bundles/forms.umd.js',
       'ng2-bs3-modal': 'node_modules/ng2-bs3-modal',
+      'ng2-cookies': 'npm:ng2-cookies/ng2-cookies.js',
 
       // other libraries
       'rxjs':                      'npm:rxjs',

@@ -1,6 +1,7 @@
 import { Component, OnInit, Injectable } from '@angular/core';
 import { Http, Response, Headers, RequestOptions, URLSearchParams } from '@angular/http';
 
+import { Cookie } from 'ng2-cookies';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
@@ -30,8 +31,9 @@ export class LoginComponent implements OnInit  {
 	private api_request_user_without_token_in_url: string = "https://api.github.com/user";
 	private api_request_user_repos: string = "";
 	private api_request_single_repository: string = "https://api.github.com/repos/";
+	private api_request_repository_api: string = "https://api.github.com/user/repos";
 
-	private scope: string = "user%20repo";
+	private scope: string = "user%20repo%20delete_repo";
 	
 	private modal_heading: string = "";
 	private modal_body: string = "";
@@ -60,6 +62,11 @@ export class LoginComponent implements OnInit  {
 	private newFileSelected: boolean = false;
 	private disabler: Profile_click_disabler;
 
+	private createRepositoryFlag: boolean = false;
+	private createDirectoryFlag: boolean = false;
+	private newRepo: Repository;
+
+
 
 	private qs = (function(a) {
 	    if (a.length == 0) return {};
@@ -81,6 +88,16 @@ export class LoginComponent implements OnInit  {
 	ngOnInit() {
 		this.code = this.qs['code'];
 
+		let testerForToken = Cookie.get("access-token");
+		let testerForScope = Cookie.get("scope");
+		if(testerForToken != undefined){
+			this.disabler = new Profile_click_disabler();
+			this.access_token = testerForToken;
+			this.scopes_received = testerForScope;
+			this.fetchProfileStuff();
+			return;
+		}
+
 		if(this.code == undefined){
 			console.log("Not yet authenticated!");
 		} else {
@@ -91,6 +108,7 @@ export class LoginComponent implements OnInit  {
 
 	onSelect(repository: Repository) {
 		this.depth = 0;
+		this.notRootDirectory = false	;
 		this.selectedRepo = repository;
 		let pathToContentRepo = this.api_request_single_repository + this.user.login + "/"
 			 + this.selectedRepo.name + "/contents/"
@@ -236,6 +254,8 @@ export class LoginComponent implements OnInit  {
 		}
 		this.access_token = data.access_token;
 		this.scopes_received = data.scope;
+		Cookie.set("access-token", data.access_token, 1000);
+		Cookie.set("scope", data.scope, 1000);
 		this.fetchProfileStuff();
 	}
 
@@ -295,7 +315,6 @@ export class LoginComponent implements OnInit  {
     }
 
     createFileCall(file: File){
-    	console.log(this.currentDirectory.url);
     	
     	let headers = new Headers();
 		headers.append('Authorization', `token ${this.access_token}`);
@@ -304,7 +323,6 @@ export class LoginComponent implements OnInit  {
 		console.log(file);
 		console.log(this.currentDirectory.url + file.name);
 
-		//btoa(file.decodedContent);
 
     	let body = JSON.stringify({
     		path: this.currentDirectory.url + file.name,
@@ -378,14 +396,124 @@ export class LoginComponent implements OnInit  {
     	eval("this.disabler."+whom + "=!this.disabler."+whom);
     }
 
-    createNewRepository(){
-    	alert("Create new Repo...");
+    initNewRepoCreation(){
+    	this.createRepositoryFlag = true;
     }
+
+    createNewRepository(name: string, description: string){
+    	let newRepo = new Repository();
+    	newRepo.name = name;
+    	newRepo.description = description;
+    	newRepo.auto_init = true;
+    	let body = JSON.stringify(newRepo);
+
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+		let options = new RequestOptions({headers: headers});
+
+    	this.http.post(this.api_request_repository_api, body, options)
+    	.toPromise()
+    	.then((response) => this.createRepoSuccess(response.json() as Repository))
+    	.catch((response) => this.createRepoFailure(response));
+    }
+
+    createRepoSuccess(repo: Repository){
+    	this.personal_repos.push(repo);
+    	this.createRepositoryFlag = false;
+    	alert("Успешно създаване на Repository!");
+    }
+
+    createRepoFailure(response: any){
+    	this.createRepositoryFlag = false;
+		this.modal_heading = "Problem creating repository";
+		this.modal_body = response;
+		this.error = true;
+		console.log(response);
+	}
 
     closeModal(){
     	this.error = false;
     	this.modal_heading = "";
     	this.modal_body = "";
+    }
+
+    closeRepositoryModal(){
+    	this.createRepositoryFlag = false;
+    }
+
+    closeDirectoryModal(){
+    	this.createDirectoryFlag = false;
+    }
+
+    createNewDirectory(name: string){
+    	let where = this.currentDirectory.url.indexOf("?");
+    	let putLocation = ""
+    	if(where == -1){
+    		putLocation = this.currentDirectory.url + name + "/dummy.txt"
+    	} else {
+    		putLocation = this.currentDirectory.url.split("?")[0] + "/" + name + "/dummy.txt"
+    	}
+
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+		let options = new RequestOptions({ headers: headers });
+
+
+    	let body = JSON.stringify({
+    		path: putLocation,
+    		message: "Creating new directory with dummy file with the help of the github api...",
+    		content: btoa("Default Value..."),
+   		});
+
+    	let data = this.http.put(putLocation, body, options)
+    	.toPromise()
+    	.then((response) => this.createdNewDirectory(response))
+    	.catch((response) => this.createdNewDirectoryFailure(response))
+    }
+
+    createdNewDirectoryFailure(response: any){
+    	this.createDirectoryFlag = false;
+    	this.modal_heading = "Problem creating directory...";
+    	this.modal_body = "Problem creating directory...";
+    	this.error = true;
+
+    	console.log(response);
+    }
+
+    createdNewDirectory(response: any){
+    	this.createDirectoryFlag = false;
+    	console.log(response);
+    }
+
+    createDirectory(){
+    	this.createDirectoryFlag = true;
+    }
+
+    deleteRepository(repository: Repository){
+    	let headers = new Headers();
+		headers.append('Authorization', `token ${this.access_token}`);
+		let options = new RequestOptions({ headers: headers });
+    	this.http.delete(repository.url, options)
+    	.toPromise()
+    	.then((response) => this.repositoryDeletionSuccessfull(repository))
+    	.catch((response) => this.deleteRepositoryFailure(response));
+    }
+
+    deleteRepositoryFailure(response: any){
+    	console.log(response);
+    	this.modal_heading = "Неуспешно изтриване на хранилището...";
+    	this.modal_body = response;
+    	this.error = true;
+    }
+
+    repositoryDeletionSuccessfull(repository: Repository){
+    	this.personal_repos.splice(this.personal_repos.indexOf(repository), 1);
+    	alert("Successfull deletion...");
+    }
+
+    deleteCookies(){
+    	Cookie.deleteAll();
+    	location.reload();
     }
 
 }

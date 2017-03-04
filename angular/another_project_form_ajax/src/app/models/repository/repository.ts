@@ -12,4 +12,5 @@ export class Repository {
   owner: User;
   url: string;
   contents_url: string;
+  auto_init: boolean;
 }
