@@ -1,7 +1,7 @@
 import { Component, OnInit, Injectable } from '@angular/core';
 import { Http, Response, Headers, RequestOptions, URLSearchParams } from '@angular/http';
 
-import { Cookie } from 'ng2-cookies';
+import { Cookie } from '../../../../node_modules/ng2-cookies/ng2-cookies.js';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/catch';
 import 'rxjs/add/operator/map';
@@ -490,6 +490,16 @@ export class LoginComponent implements OnInit  {
     }
 
     deleteRepository(repository: Repository){
+    	let x = confirm("Ше го триеме ли?");
+    	if(!x){
+    		return;
+    	}
+		
+		x = confirm("Оти?");
+		if(!x){
+			return;
+		}
+
     	let headers = new Headers();
 		headers.append('Authorization', `token ${this.access_token}`);
 		let options = new RequestOptions({ headers: headers });
