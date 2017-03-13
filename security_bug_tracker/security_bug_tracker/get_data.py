@@ -1,16 +1,24 @@
 import urllib.request
 import platform, sys
-
 import argparse
 
 from bs4 import BeautifulSoup
 
-origin = "https://security-tracker.debian.org"
-site_with_packages = "https://security-tracker.debian.org/tracker/status/release/stable"
-if len(sys.argv) == 3:
+
+parser = argparse.ArgumentParser(description = """For the given packages, returns whether or not the machine is vulnerable
+ to the bugs with the given urgency level in each of the packages""")
+parser.add_argument("urgency", help = "The urgency level of the big in the package: h for high, m for medium, l for low, u for not yet assigned")
+parser.add_argument("-v", "--verbose", help="Increase output verbosity", action = "store_true", default = False)
+args = parser.parse_args()
+
+if args.verbose:
 	DEBUG = True
 else:
 	DEBUG = False
+
+
+origin = "https://security-tracker.debian.org"
+site_with_packages = "https://security-tracker.debian.org/tracker/status/release/stable"
 
 def getOs():
 	if DEBUG:
@@ -24,7 +32,7 @@ def getOs():
 	return "jessie"
 
 def getUrgency():
-	urgency = sys.argv[1]
+	urgency = args.urgency
 	return_urgency = set()
 	if "h" in urgency:
 		return_urgency.add("high")
