@@ -1,0 +1,3 @@
+sublime
+calibre
+gst-plugins-bad1.0

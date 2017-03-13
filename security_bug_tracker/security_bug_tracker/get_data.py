@@ -7,19 +7,24 @@ from bs4 import BeautifulSoup
 
 origin = "https://security-tracker.debian.org"
 site_with_packages = "https://security-tracker.debian.org/tracker/status/release/stable"
+if len(sys.argv) == 3:
+	DEBUG = True
+else:
+	DEBUG = False
 
 def getOs():
-	print(platform.release())
-	print(platform.platform())
-	print(platform.system())
-	print(platform.version())
-	print(platform.dist())
-	print(platform.linux_distribution())
+	if DEBUG:
+		print(platform.release())
+		print(platform.platform())
+		print(platform.system())
+		print(platform.version())
+		print(platform.dist())
+		print(platform.linux_distribution())
 
 	return "jessie"
 
 def getUrgency():
-	urgency = sys.argv[2]
+	urgency = sys.argv[1]
 	return_urgency = set()
 	if "h" in urgency:
 		return_urgency.add("high")
@@ -30,10 +35,23 @@ def getUrgency():
 	if "l" in urgency:
 		return_urgency.add("low")
 
+	if DEBUG:
+		print("Urgency: ")
+		print(return_urgency)
+	
 	return return_urgency
 
 def getPackages():
-	return ["gst-plugins-bad1.0"]
+	packages = []
+
+	with open("packages/packages.txt", "r") as f:
+		for package in f:
+			packages.append(package.strip())
+
+	if DEBUG:
+		print("Packges: ")
+		print(packages)
+	return packages
 
 def openWebsiteWithBS(website):
 	return BeautifulSoup(urllib.request.urlopen(website).read(), "lxml")
