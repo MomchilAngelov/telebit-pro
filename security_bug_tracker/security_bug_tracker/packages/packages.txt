@@ -1,3 +1,5 @@
 sublime
+gradle
+graphicsmagick
 calibre
 gst-plugins-bad1.0

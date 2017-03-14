@@ -29,7 +29,7 @@ def getOs():
 		print(platform.dist())
 		print(platform.linux_distribution())
 
-	return "jessie"
+	return "wheezy"
 
 def getUrgency():
 	urgency = args.urgency

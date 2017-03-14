@@ -1,0 +1,94 @@
+{
+    "version": "3.0",
+    "applications": {
+        "icmp_pings": {
+            "items": {
+                "216.58.212.35.packet_loss": {
+                    "type": "float",
+                    "units": "%",
+                    "value": "0",
+                    "timestamp": 1489502398,
+                    "name": "[216.58.212.35] ICMP ping: packet loss"
+                },
+                "54.192.129.106.rtt": {
+                    "type": "float",
+                    "units": "ms",
+                    "value": 32.965,
+                    "timestamp": 1489502398,
+                    "name": "[54.192.129.106] ICMP ping: packet round trip time"
+                },
+                "216.58.212.35.rtt": {
+                    "type": "float",
+                    "units": "ms",
+                    "value": 1.385,
+                    "timestamp": 1489502398,
+                    "name": "[216.58.212.35] ICMP ping: packet round trip time"
+                },
+                "1.2.3.4.rtt": {
+                    "type": "float",
+                    "units": "ms",
+                    "value": "N/A",
+                    "timestamp": 1489502399,
+                    "name": "[1.2.3.4] ICMP ping: packet round trip time"
+                },
+                "209.104.225.60.rtt": {
+                    "type": "float",
+                    "units": "ms",
+                    "value": 111.048,
+                    "timestamp": 1489502398,
+                    "name": "[209.104.225.60] ICMP ping: packet round trip time"
+                },
+                "1.2.3.4.packet_loss": {
+                    "type": "float",
+                    "units": "%",
+                    "value": 100,
+                    "timestamp": 1489502399,
+                    "name": "[1.2.3.4] ICMP ping: packet loss"
+                },
+                "54.192.129.106.packet_loss": {
+                    "type": "float",
+                    "units": "%",
+                    "value": "0",
+                    "timestamp": 1489502398,
+                    "name": "[54.192.129.106] ICMP ping: packet loss"
+                },
+                "84.238.224.124.rtt": {
+                    "type": "float",
+                    "units": "ms",
+                    "value": 0.24,
+                    "timestamp": 1489502398,
+                    "name": "[84.238.224.124] ICMP ping: packet round trip time"
+                },
+                "31.13.92.36.rtt": {
+                    "type": "float",
+                    "units": "ms",
+                    "value": 31.476,
+                    "timestamp": 1489502398,
+                    "name": "[31.13.92.36] ICMP ping: packet round trip time"
+                },
+                "31.13.92.36.packet_loss": {
+                    "type": "float",
+                    "units": "%",
+                    "value": "0",
+                    "timestamp": 1489502398,
+                    "name": "[31.13.92.36] ICMP ping: packet loss"
+                },
+                "84.238.224.124.packet_loss": {
+                    "type": "float",
+                    "units": "%",
+                    "value": "0",
+                    "timestamp": 1489502398,
+                    "name": "[84.238.224.124] ICMP ping: packet loss"
+                },
+                "209.104.225.60.packet_loss": {
+                    "type": "float",
+                    "units": "%",
+                    "value": "0",
+                    "timestamp": 1489502398,
+                    "name": "[209.104.225.60] ICMP ping: packet loss"
+                }
+            },
+            "name": "IMCP pings"
+        }
+    }
+}

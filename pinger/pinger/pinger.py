@@ -1,13 +1,14 @@
 import gevent
 from gevent import Timeout
 from gevent.subprocess import Popen, PIPE
-import re
+import re, time, json
 
 timeout_seconds = 1
 package_count = 5
 
 all_threads = []
 data = {}
+output_json = {}
 
 def parse_result(some_string):
 	"""
@@ -30,7 +31,6 @@ def parse_result(some_string):
 	try:
 		values_arr = rtt_group.group(0).split("/")
 	except Exception as e:
-		#Total loss of pings..
 		return 100, "N/A", "N/A" 
 
 	rtt_avg = float(values_arr[1])
@@ -40,9 +40,10 @@ def parse_result(some_string):
 
 def ping(ip, number_of_packages, current_order, timeout):
 	#print('ping -i {0} -q -W {1} -c {2} {3}'.format(timeout/number_of_packages, timeout, number_of_packages, ip))
-	sub = Popen(['ping -i {0} -q -W {1} -c {2} {3}'.format(timeout/number_of_packages, timeout, number_of_packages, ip)], stdout=PIPE, shell=True)
+	sub = Popen(["ping -i {0} -q -W {1} -c {2} {3}"
+		.format(timeout/number_of_packages, timeout, number_of_packages, ip)], stdout=PIPE, shell=True)
 	out, err = sub.communicate()
-	data[current_order] = [ip, out]
+	data[current_order] = [ip, out, time.time()]
 
 
 with open("test_Data/ips", "r") as f:
@@ -52,6 +53,30 @@ with open("test_Data/ips", "r") as f:
 
 gevent.joinall(all_threads)
 
+output_json["version"] = "3.0"
+output_json["applications"] = {}
+output_json["applications"]["icmp_pings"] = {}
+output_json["applications"]["icmp_pings"]["name"] = "IMCP pings"
+output_json["applications"]["icmp_pings"]["items"] = {}
+items = output_json["applications"]["icmp_pings"]["items"]
+
 for key, value in data.items():
-	packet_loss, rtt_avg, mdev = parse_result(str(value[1], "utf-8"))
-	print("IP order {0}; IP: {1}; packet_loss: {2}; rtt: {3}; mdev: {4}".format(key, value[0].strip(), packet_loss, rtt_avg, mdev))
+	packet_loss, rtt_avg, mdev = parse_result(value[1].decode())
+	
+	items[value[0].strip()+".rtt"] = {}
+	items[value[0].strip()+".rtt"]["value"] = rtt_avg
+	items[value[0].strip()+".rtt"]["units"] = "ms"
+	items[value[0].strip()+".rtt"]["name"] = "[{0}] ICMP ping: packet round trip time".format(value[0].strip())
+	items[value[0].strip()+".rtt"]["type"] = "float"
+	items[value[0].strip()+".rtt"]["timestamp"] = int(value[2])
+
+
+	items[value[0].strip()+".packet_loss"] = {}
+	items[value[0].strip()+".packet_loss"]["value"] = packet_loss
+	items[value[0].strip()+".packet_loss"]["units"] = "%"
+	items[value[0].strip()+".packet_loss"]["name"] = "[{0}] ICMP ping: packet loss".format(value[0].strip())
+	items[value[0].strip()+".packet_loss"]["type"] = "float"
+	items[value[0].strip()+".packet_loss"]["timestamp"] = int(value[2])
+
+output_json_final = json.dumps(output_json, ensure_ascii=False, indent = 4)
+print(output_json_final)
