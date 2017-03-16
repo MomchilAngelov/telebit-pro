@@ -1,28 +1,65 @@
 import gevent
 from gevent import Timeout
 from gevent.subprocess import Popen, PIPE
-import re, time, json
+import re, time, json, argparse, sys
 
-timeout_seconds = 1
-package_count = 5
+parser = argparse.ArgumentParser(description = """Ping some ips or hosts ;)""")
+parser.add_argument("-c", "--configure", help="Give the ip txt file", type = str, default = False)
+parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
+parser.add_argument("-p", "--packet", help="The number of packets sent to the host/ip", type = int, default = False)
+parser.add_argument("-t", "--time", help="The time the packets should be bashed on the host!", type = int, default = False)
 
-all_threads = []
-data = {}
-output_json = {}
+args = parser.parse_args()
+
+
+if not (args.time == 0 or args.packet == 0):
+	if args.time/args.packet < 0.2:
+		print("We can't do that...\nYou are going too fast!")
+		sys.exit()
+
+def isgoodipv4(s):
+	pieces = s.split('.')
+	if len(pieces) != 4: return False
+	
+	try: return all(0<=int(p)<256 for p in pieces)
+	except ValueError: return False
+
+def getDataFromFile():
+	tmp_arr = []
+	with open("test_Data/ips", "r") as f:
+		for line in f:
+			ip_or_host = str(line).strip()
+			if isDomainname(ip_or_host):
+				ips = resolveDomainName(ip_or_host)
+				for ip in ips:
+					tmp_arr.append([ip_or_host, ip])
+			else:
+				if isGoodIPv4(ip_or_host):
+					tmp_arr.append(ip_or_host)	
+				else:
+					pass
+		sys.exit()
+
+	return tmp_arr
+
+def resolveDomainName(hostname):
+	ips = []
+	
+	return ips
+
+def getInitialValues(time, packet):
+	if time == 0 and packet == 0:
+		return 2, 10
+
+	if time == 0 and packet != 0:
+		return packet*0.2, packet
+
+	if time != 0 and packet == 0:
+		return time, time*5
+
+	return time, packet
 
 def parse_result(some_string):
-	"""
-	EXAMPLE:
-
-		PING 216.58.212.35 (216.58.212.35) 56(84) bytes of data.
-		64 bytes from 216.58.212.35: icmp_seq=1 ttl=57 time=21.7 ms
-		64 bytes from 216.58.212.35: icmp_seq=2 ttl=57 time=1.22 ms
-
-		--- 216.58.212.35 ping statistics ---
-		2 packets transmitted, 2 received, 0% packet loss, time 1001ms
-		rtt min/avg/max/mdev = 1.229/11.501/21.773/10.272 ms
-
-	"""
 
 	packet_loss_group = re.search(r"(?<=received, )[0-9]+", some_string)
 	packet_loss = packet_loss_group.group(0)
@@ -38,17 +75,32 @@ def parse_result(some_string):
 
 	return packet_loss, rtt_avg, mdev
 
-def ping(ip, number_of_packages, current_order, timeout):
+def ping(ip, number_of_packages, current_order, timeout, host):
 	#print('ping -i {0} -q -W {1} -c {2} {3}'.format(timeout/number_of_packages, timeout, number_of_packages, ip))
 	sub = Popen(["ping -i {0} -q -W {1} -c {2} {3}"
 		.format(timeout/number_of_packages, timeout, number_of_packages, ip)], stdout=PIPE, shell=True)
 	out, err = sub.communicate()
-	data[current_order] = [ip, out, time.time()]
+	data[current_order] = [ip, out, time.time(), host]
 
+
+timeout_seconds, package_count = getInitialValues(args.time, args.packet)
+
+if args.verbose:
+	print("Number of sent packets: {0}".format(package_count))
+	print("Time to send the packets: {0}".format(timeout_seconds))
+
+all_threads = []
+data = {}
+host_to_ip = {}
+output_json = {}
+
+
+host_to_ip = getDataFromFile()
 
 with open("test_Data/ips", "r") as f:
 	for current_order, current_ip in enumerate(f):
-		g = gevent.spawn(ping, ip = current_ip, number_of_packages = package_count, current_order = current_order, timeout = timeout_seconds)
+		resolved_host = None
+		g = gevent.spawn(ping, ip = current_ip, number_of_packages = package_count, current_order = current_order, timeout = timeout_seconds, host = resolved_host or None)
 		all_threads.append(g)
 
 gevent.joinall(all_threads)

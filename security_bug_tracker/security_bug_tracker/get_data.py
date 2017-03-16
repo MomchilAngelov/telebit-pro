@@ -1,13 +1,12 @@
 import urllib.request
-import platform, sys
-import argparse
+import platform, sys, argparse, subprocess
 
 from bs4 import BeautifulSoup
-
 
 parser = argparse.ArgumentParser(description = """For the given packages, returns whether or not the machine is vulnerable
  to the bugs with the given urgency level in each of the packages""")
 parser.add_argument("urgency", help = "The urgency level of the big in the package: h for high, m for medium, l for low, u for not yet assigned")
+parser.add_argument("-c", "--configure", help="Give the package txt file", type = str, default = False)
 parser.add_argument("-v", "--verbose", help="Increase output verbosity", action = "store_true", default = False)
 args = parser.parse_args()
 
@@ -16,20 +15,24 @@ if args.verbose:
 else:
 	DEBUG = False
 
+if args.configure:
+	file_with_packages = args.configure
+else:
+	file_with_packages = "packages/packages.txt"
+
 
 origin = "https://security-tracker.debian.org"
 site_with_packages = "https://security-tracker.debian.org/tracker/status/release/stable"
 
 def getOs():
-	if DEBUG:
-		print(platform.release())
-		print(platform.platform())
-		print(platform.system())
-		print(platform.version())
-		print(platform.dist())
-		print(platform.linux_distribution())
+	sub = subprocess.Popen(["lsb_release -cs"], stdout=subprocess.PIPE, shell=True)
+	out, err = sub.communicate()
 
-	return "wheezy"
+	if DEBUG:
+		print(str(out, "utf-8").strip())	
+
+	return str(out, "utf-8").strip()
+
 
 def getUrgency():
 	urgency = args.urgency
@@ -52,7 +55,7 @@ def getUrgency():
 def getPackages():
 	packages = []
 
-	with open("packages/packages.txt", "r") as f:
+	with open(file_with_packages, "r") as f:
 		for package in f:
 			packages.append(package.strip())
 
