@@ -3,11 +3,11 @@ from gevent import Timeout
 from gevent.subprocess import Popen, PIPE
 import re, time, json, argparse, sys, socket
 
-parser = argparse.ArgumentParser(description = """Ping some ips or hosts ;)""")
-parser.add_argument("-c", "--configure", help="Give the ip txt file", type = str, default = False)
-parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
+parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
+parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
 parser.add_argument("-p", "--packet", help="The number of packets sent to the host/ip", type = int, default = False)
 parser.add_argument("-t", "--time", help="The time the packets should be bashed on the host!", type = int, default = False)
+parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
 
 args = parser.parse_args()
 
@@ -33,11 +33,22 @@ def isGoodIPv4(s):
 	try: return all(0<=int(p)<256 for p in pieces)
 	except ValueError: return False
 
+def normalizeInputForHostname(hostname):
+	hostname = hostname.replace("https://", "", 1)
+	hostname = hostname.replace("http://", "", 1)
+	if hostname[-1] == "/":
+		hostname = hostname[:-1]
+	
+	return hostname	
+
 def resolveDomainName(hostname):
+	hostname = normalizeInputForHostname(hostname)
 
 	try:
 		ips = socket.gethostbyname_ex(hostname)[2]
 	except socket.gaierror as e:
+		if DEBUG:
+			print("Had problem resolving", hostname)
 		ips=[]
 
 	if DEBUG:
@@ -46,21 +57,38 @@ def resolveDomainName(hostname):
 	return ips
 
 def getDataFromFile(file):
+	"""
+		TMP ARRAY STRUCTURE:
+			ip, number of packages, timeout, host (if any)
+	"""
+
 	if DEBUG:
-		print("Getting data from {0}".format("test_Data/ips"))
+		print("Getting data from {0}".format(file))
 
 	tmp_arr = []
 
 	with open(file, "r") as f:
-		for line in f:
-			ip_or_host = str(line).strip()
-			if isGoodIPv4(ip_or_host):
-				tmp_arr.append(ip_or_host)	
+		input_json = json.load(f)
+		for idx, valueIdx in input_json["applications"]["icmp_pings"]["items"].items():
+			temporary_item = []
+			if isGoodIPv4(valueIdx["address"]):
+				temporary_item.append(valueIdx["address"])
+				temporary_item.append(valueIdx["packets_count"])
+				temporary_item.append(valueIdx["packet_interval"])
+				tmp_arr.append(temporary_item)
 			else:
-				ips = resolveDomainName(ip_or_host)
+				ips = resolveDomainName(valueIdx["address"])
 				for ip in ips:
-					tmp_arr.append([ip_or_host, ip])
-				
+					temporary_item.append(ip)
+					temporary_item.append(valueIdx["packets_count"])
+					temporary_item.append(valueIdx["packet_interval"])
+					temporary_item.append(valueIdx["address"])
+					tmp_arr.append(temporary_item)
+					temporary_item = []
+	
+	if DEBUG:
+		print(tmp_arr)
+	
 	return tmp_arr
 
 def getInitialValues(time, packet):
@@ -91,32 +119,26 @@ def parse_result(some_string):
 
 	return packet_loss, rtt_avg, mdev
 
-def ping(ip, number_of_packages, current_order, timeout, host):
-	#if DEBUG:
-	#	print('ping -i {0} -q -W {1} -c {2} {3}'.format(timeout/number_of_packages, timeout, number_of_packages, ip))
+def ping(ip, number_of_packages, current_order, speed, host, data):
+	command = 'ping -i {0} -q -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
+	if DEBUG:
+		print(command)
 
-	sub = Popen(["ping -i {0} -q -W {1} -c {2} {3}"
-		.format(timeout/number_of_packages, timeout, number_of_packages, ip)], stdout=PIPE, shell=True)
+	sub = Popen([command], stdout=PIPE, shell=True)
 	out, err = sub.communicate()
-	data[current_order] = [ip, out, time.time(), host]
+	data[current_order] = [ip, out, time.time(), host, command]
 
 
 timeout_seconds, package_count = getInitialValues(args.time, args.packet)
-
-if DEBUG:
-	print("Number of sent packets: {0}".format(package_count))
-	print("Time to send the packets: {0}".format(timeout_seconds))
-
-
 host_to_ip = getDataFromFile(args.configure or defaultSearchFolder)
 
 for current_order, current_ip in enumerate(host_to_ip):
-	if type(current_ip) == type(''):
-		g = gevent.spawn(ping, ip = current_ip, number_of_packages = package_count,
-			current_order = current_order, timeout = timeout_seconds, host = None)
+	if len(current_ip) == 3:
+		g = gevent.spawn(ping, ip = current_ip[0], number_of_packages = current_ip[1],
+			current_order = current_order, speed = current_ip[2], host = None, data = data)
 	else:
-		g = gevent.spawn(ping, ip = current_ip[1], number_of_packages = package_count,
-			current_order = current_order, timeout = timeout_seconds, host = current_ip[0])
+		g = gevent.spawn(ping, ip = current_ip[0], number_of_packages = current_ip[1],
+			current_order = current_order, speed = current_ip[2], host = current_ip[3], data = data)
 	
 	all_threads.append(g)
 
@@ -139,6 +161,7 @@ for key, value in data.items():
 	items[value[0].strip()+".rtt"]["type"] = "float"
 	items[value[0].strip()+".rtt"]["timestamp"] = int(value[2])
 	items[value[0].strip()+".rtt"]["domain"] = value[3]
+	items[value[0].strip()+".rtt"]["command"] = value[4]
 
 
 	items[value[0].strip()+".packet_loss"] = {}
@@ -148,6 +171,7 @@ for key, value in data.items():
 	items[value[0].strip()+".packet_loss"]["type"] = "float"
 	items[value[0].strip()+".packet_loss"]["timestamp"] = int(value[2])
 	items[value[0].strip()+".packet_loss"]["domain"] = value[3]
+	items[value[0].strip()+".packet_loss"]["command"] = value[4]
 
 output_json_final = json.dumps(output_json, ensure_ascii=False, indent = 4)
 print(output_json_final)

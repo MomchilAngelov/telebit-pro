@@ -5,15 +5,12 @@ from bs4 import BeautifulSoup
 
 parser = argparse.ArgumentParser(description = """For the given packages, returns whether or not the machine is vulnerable
  to the bugs with the given urgency level in each of the packages""")
-parser.add_argument("urgency", help = "The urgency level of the big in the package: h for high, m for medium, l for low, u for not yet assigned")
+parser.add_argument("urgency", help = "The urgency level of the bug in the package: h for high, m for medium, l for low, u for not yet assigned")
 parser.add_argument("-c", "--configure", help="Give the package txt file", type = str, default = False)
 parser.add_argument("-v", "--verbose", help="Increase output verbosity", action = "store_true", default = False)
 args = parser.parse_args()
 
-if args.verbose:
-	DEBUG = True
-else:
-	DEBUG = False
+DEBUG = args.verbose
 
 if args.configure:
 	file_with_packages = args.configure
@@ -47,7 +44,7 @@ def getUrgency():
 		return_urgency.add("low")
 
 	if DEBUG:
-		print("Urgency: ")
+		print("Urgency:", end="\n\t")
 		print(return_urgency)
 	
 	return return_urgency
