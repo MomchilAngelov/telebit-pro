@@ -1,0 +1,118 @@
+{
+    "applications": {
+        "icmp_pings": {
+            "items": {
+                "54.239.31.69.rtt": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.25 -q -W 1.25 -c 5 54.239.31.69",
+                    "units": "ms",
+                    "domain": "https://aws.amazon.com/",
+                    "value": 120.878,
+                    "name": "[54.239.31.69 -> https://aws.amazon.com/] ICMP ping: packet round trip time"
+                },
+                "54.236.195.15.packet_loss": {
+                    "type": "float",
+                    "timestamp": 1489771012,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 54.236.195.15",
+                    "units": "%",
+                    "domain": "blaablaablaa.com",
+                    "value": 100,
+                    "name": "[54.236.195.15 -> blaablaablaa.com] ICMP ping: packet loss"
+                },
+                "157.240.11.35.packet_loss": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 157.240.11.35",
+                    "units": "%",
+                    "domain": null,
+                    "value": "0",
+                    "name": "[157.240.11.35 -> None] ICMP ping: packet loss"
+                },
+                "54.236.195.15.rtt": {
+                    "type": "float",
+                    "timestamp": 1489771012,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 54.236.195.15",
+                    "units": "ms",
+                    "domain": "blaablaablaa.com",
+                    "value": "N/A",
+                    "name": "[54.236.195.15 -> blaablaablaa.com] ICMP ping: packet round trip time"
+                },
+                "54.239.31.69.packet_loss": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.25 -q -W 1.25 -c 5 54.239.31.69",
+                    "units": "%",
+                    "domain": "https://aws.amazon.com/",
+                    "value": "0",
+                    "name": "[54.239.31.69 -> https://aws.amazon.com/] ICMP ping: packet loss"
+                },
+                "216.58.209.14.rtt": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.25 -q -W 1.25 -c 5 216.58.209.14",
+                    "units": "ms",
+                    "domain": "https://google.com/",
+                    "value": 0.578,
+                    "name": "[216.58.209.14 -> https://google.com/] ICMP ping: packet round trip time"
+                },
+                "34.206.157.64.rtt": {
+                    "type": "float",
+                    "timestamp": 1489771012,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 34.206.157.64",
+                    "units": "ms",
+                    "domain": "blaablaablaa.com",
+                    "value": "N/A",
+                    "name": "[34.206.157.64 -> blaablaablaa.com] ICMP ping: packet round trip time"
+                },
+                "216.58.209.14.packet_loss": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.25 -q -W 1.25 -c 5 216.58.209.14",
+                    "units": "%",
+                    "domain": "https://google.com/",
+                    "value": "0",
+                    "name": "[216.58.209.14 -> https://google.com/] ICMP ping: packet loss"
+                },
+                "178.79.141.139.packet_loss": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 178.79.141.139",
+                    "units": "%",
+                    "domain": "http://blaa.com",
+                    "value": "0",
+                    "name": "[178.79.141.139 -> http://blaa.com] ICMP ping: packet loss"
+                },
+                "157.240.11.35.rtt": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 157.240.11.35",
+                    "units": "ms",
+                    "domain": null,
+                    "value": 190.639,
+                    "name": "[157.240.11.35 -> None] ICMP ping: packet round trip time"
+                },
+                "34.206.157.64.packet_loss": {
+                    "type": "float",
+                    "timestamp": 1489771012,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 34.206.157.64",
+                    "units": "%",
+                    "domain": "blaablaablaa.com",
+                    "value": 100,
+                    "name": "[34.206.157.64 -> blaablaablaa.com] ICMP ping: packet loss"
+                },
+                "178.79.141.139.rtt": {
+                    "type": "float",
+                    "timestamp": 1489771011,
+                    "command": "ping -i 0.2 -q -W 1.0 -c 5 178.79.141.139",
+                    "units": "ms",
+                    "domain": "http://blaa.com",
+                    "value": 44.851,
+                    "name": "[178.79.141.139 -> http://blaa.com] ICMP ping: packet round trip time"
+                }
+            },
+            "name": "Momo's little Pinger"
+        }
+    },
+    "version": "3.0"
+}

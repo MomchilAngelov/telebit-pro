@@ -27,7 +27,7 @@
         "5": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "http://blaablaablaa.com"
+          "address": "blaablaablaa.com"
         },
         "6": {
           "packet_interval": 0.2,          
