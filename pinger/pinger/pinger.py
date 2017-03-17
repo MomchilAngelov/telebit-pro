@@ -27,15 +27,15 @@ def main():
 			sys.exit()
 
 	timeout_seconds, package_count = getInitialValues(args.time, args.packet)
-	host_to_ip = getDataFromFile(args.configure or defaultSearchFolder)
+	host_to_data = getDataFromFile(args.configure or defaultSearchFolder)
 
-	for current_order, current_ip in enumerate(host_to_ip):
-		if len(current_ip) == 3:
-			g = gevent.spawn(ping, ip = current_ip[0], number_of_packages = current_ip[1],
-				current_order = current_order, speed = current_ip[2], host = None, data = data)
+	for current_order, current_data in enumerate(host_to_data):
+		if len(current_data) == 3:
+			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
+				current_order = current_order, speed = current_data[2], host = None, data = data)
 		else:
-			g = gevent.spawn(ping, ip = current_ip[0], number_of_packages = current_ip[1],
-				current_order = current_order, speed = current_ip[2], host = current_ip[3], data = data)
+			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
+				current_order = current_order, speed = current_data[2], host = current_data[3], data = data)
 		
 		all_threads.append(g)
 
