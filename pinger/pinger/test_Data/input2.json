@@ -1,38 +1,38 @@
 {
   "varsion": "3.0",
   "applications": {
-    "icmp_pings": {
-      "name": "IMCP pings",
+    "icmp_pings2": {
+      "name": "IMCP2 pings",
       "items": {
         "1": {
           "packet_interval" : 0.25,
           "packets_count" : 5,
-          "address" : "https://google.com/"
+          "address" : "https://kongregate.com/"
         },
         "2": {
           "packet_interval" : 0.25,
           "packets_count" : 5,
-          "address" : "https://aws.amazon.com/"
+          "address" : "https://twitter.com/"
         },
         "3": {
           "packet_interval": 0.2,
           "packets_count": 5,
-          "address": "http://blaa.com"
+          "address": "http://facebook.com"
         },
         "4": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "http://sagbfasdbashre.com"
+          "address": "http://northshire.com"
         },
         "5": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "blaablaablaa.com"
+          "address": "whitekingdom.com"
         },
         "6": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "157.240.11.35"
+          "address": "157.242.11.35"
         }
       }
     }

@@ -1,7 +1,7 @@
 import gevent
 from gevent import Timeout
 from gevent.subprocess import Popen, PIPE
-import re, time, json, argparse, sys, socket
+import re, time, json, argparse, sys, socket, glob, tempfile
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
@@ -30,12 +30,12 @@ def main():
 	host_to_data = getDataFromFile(args.configure or defaultSearchFolder)
 
 	for current_order, current_data in enumerate(host_to_data):
-		if len(current_data) == 3:
+		if len(current_data) == 4:
 			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
-				current_order = current_order, speed = current_data[2], host = None, data = data)
+				current_order = current_order, speed = current_data[2], host = None, data = data, requesting_application = current_data[3])
 		else:
 			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
-				current_order = current_order, speed = current_data[2], host = current_data[3], data = data)
+				current_order = current_order, speed = current_data[2], host = current_data[3], data = data, requesting_application = current_data[4])
 		
 		all_threads.append(g)
 
@@ -58,7 +58,8 @@ def main():
 			"type": "float", 
 			"timestamp": int(value[2]), 
 			"domain": value[3], 
-			"command": value[4]
+			"command": value[4],
+			"requesting_application": value[5]
 		}
 
 		items[value[0].strip()+".packet_loss"] = {
@@ -67,7 +68,8 @@ def main():
 			"type": "float",
 			"timestamp": int(value[2]), 
 			"domain": value[3],
-			"command": value[4]
+			"command": value[4],
+			"requesting_application": value[5]
 		}
 		
 		# items[value[0].strip()+".rtt"] = {}	
@@ -95,12 +97,14 @@ def main():
 
 
 def isGoodIPv4(s):
+
 	pieces = s.split('.')
 	if len(pieces) != 4: return False	
 	try: return all(0<=int(p)<256 for p in pieces)
 	except ValueError: return False
 
 def normalizeInputForHostname(hostname):
+
 	hostname = hostname.replace("https://", "", 1)
 	hostname = hostname.replace("http://", "", 1)
 	if hostname[-1] == "/":
@@ -108,6 +112,7 @@ def normalizeInputForHostname(hostname):
 	return hostname	
 
 def resolveDomainName(hostname):
+	
 	hostname = normalizeInputForHostname(hostname)
 
 	try:
@@ -122,29 +127,62 @@ def resolveDomainName(hostname):
 	
 	return ips
 
+def concatenateFiles(array_of_files):
+
+	temp = tempfile.TemporaryFile(mode="w+")
+	my_json = {}
+	my_json["version"] = "3.0"
+	my_json["applications"] = {}
+
+	for file in array_of_files:
+		with open(file) as f:
+			tmp_json = json.load(f)
+			for k, v in tmp_json["applications"].items():
+				my_json["applications"][k] = v
+
+
+	json.dump(my_json, temp)
+
+	if DEBUG:
+		with open("intermidiate_file.json", "w") as f:
+			json.dump(my_json, f, indent=4)
+
+	return temp
+
+def openJSON(file):
+	try:
+		with open(file, "r") as f:
+			result_json = json.load(f)
+	except TypeError:
+		file.seek(0)
+		return_json = json.load(file)
+		file.close()
+		return return_json
+	return result_json
+
 def getDataFromFile(file):
-	"""
-		Input:
-			the relative path to a file
-
-		output:
-			array with structure:
-				ip, number of packages, timeout, host (if any)
-	"""
-
 	if DEBUG:
 		print("Getting data from {0}".format(file))
 
 	tmp_arr = []
 
-	with open(file, "r") as f:
-		input_json = json.load(f)
-		for idx, valueIdx in input_json["applications"]["icmp_pings"]["items"].items():
+	files_matching_pattern = glob.glob(file)
+	if len(files_matching_pattern) > 1:
+		input_json = openJSON(concatenateFiles(files_matching_pattern))
+	else:
+		input_json = openJSON(files_matching_pattern[0])
+	
+	for idx2, valueIdx2 in input_json["applications"].items():
+		if DEBUG:
+			print("Parsing for application...", idx2)
+	
+		for idx, valueIdx in input_json["applications"][idx2]["items"].items():
 			temporary_item = []
 			if isGoodIPv4(valueIdx["address"]):
 				temporary_item.append(valueIdx["address"])
 				temporary_item.append(valueIdx["packets_count"])
 				temporary_item.append(valueIdx["packet_interval"])
+				temporary_item.append(idx2)
 				tmp_arr.append(temporary_item)
 			else:
 				domain_to_ips = resolveDomainName(valueIdx["address"])
@@ -153,12 +191,13 @@ def getDataFromFile(file):
 					temporary_item.append(valueIdx["packets_count"])
 					temporary_item.append(valueIdx["packet_interval"])
 					temporary_item.append(valueIdx["address"])
+					temporary_item.append(idx2)
 					tmp_arr.append(temporary_item)
 					temporary_item = []
 	
 	if DEBUG:
 		print(tmp_arr)
-	
+
 	return tmp_arr
 
 def getInitialValues(time, packet):
@@ -189,14 +228,14 @@ def parseResult(some_string):
 
 	return packet_loss, rtt_avg, mdev
 
-def ping(ip, number_of_packages, current_order, speed, host, data):
+def ping(ip, number_of_packages, current_order, speed, host, data, requesting_application):
 	command = 'ping -i {0} -q -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
 	if DEBUG:
 		print(command)
 
 	sub = Popen([command], stdout=PIPE, shell=True)
 	out, err = sub.communicate()
-	data[current_order] = [ip, out, time.time(), host, command]
+	data[current_order] = [ip, out, time.time(), host, command, requesting_application]
 
 
 main()
