@@ -1,2 +1,3 @@
 sublime
 389-ds-base
+graphicsmagick
