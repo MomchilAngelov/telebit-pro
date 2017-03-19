@@ -29,15 +29,11 @@ def main():
 	timeout_seconds, package_count = getInitialValues(args.time, args.packet)
 	host_to_data = getDataFromFile(args.configure or defaultSearchFolder)
 
-	for current_order, current_data in enumerate(host_to_data):
-		if len(current_data) == 3:
-			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
-				current_order = current_order, speed = current_data[2], host = None, data = data)
-		else:
-			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
-				current_order = current_order, speed = current_data[2], host = current_data[3], data = data)
-		
-		all_threads.append(g)
+
+	all_threads=[gevent.spawn(ping, ip = current_data[0], 
+		number_of_packages = current_data[1],	current_order = current_order, 
+		speed = current_data[2], host = current_data[3], data = data) 
+		for current_order, current_data in enumerate(host_to_data)]
 
 	gevent.joinall(all_threads)
 
@@ -145,6 +141,7 @@ def getDataFromFile(file):
 				temporary_item.append(valueIdx["address"])
 				temporary_item.append(valueIdx["packets_count"])
 				temporary_item.append(valueIdx["packet_interval"])
+				temporary_item.append(None)
 				tmp_arr.append(temporary_item)
 			else:
 				domain_to_ips = resolveDomainName(valueIdx["address"])
