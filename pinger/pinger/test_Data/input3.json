@@ -1,0 +1,40 @@
+{
+  "varsion": "3.0",
+  "applications": {
+    "icmp_pings3": {
+      "name": "IMCP3 pings",
+      "items": {
+        "1": {
+          "packet_interval" : 1.00,
+          "packets_count" : 5,
+          "address" : "https://kongregate.com/"
+        },
+        "2": {
+          "packet_interval" : 0.25,
+          "packets_count" : 5,
+          "address" : "https://twitter.com/"
+        },
+        "3": {
+          "packet_interval": 0.2,
+          "packets_count": 5,
+          "address": "http://facebook.com"
+        },
+        "4": {
+          "packet_interval": 0.2,          
+          "packets_count": 5,
+          "address": "http://northshire.com"
+        },
+        "5": {
+          "packet_interval": 0.2,          
+          "packets_count": 5,
+          "address": "whitekingdom.com"
+        },
+        "6": {
+          "packet_interval": 0.2,          
+          "packets_count": 5,
+          "address": "157.242.11.35"
+        }
+      }
+    }
+  }
+}
