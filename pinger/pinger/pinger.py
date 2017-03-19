@@ -150,7 +150,6 @@ def concatenateFiles(array_of_files):
 			for k, v in tmp_json["applications"].items():
 				my_json["applications"][k] = v
 
-
 	json.dump(my_json, temp)
 
 	if DEBUG:
