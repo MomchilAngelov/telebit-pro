@@ -29,15 +29,11 @@ def main():
 	timeout_seconds, package_count = getInitialValues(args.time, args.packet)
 	host_to_data = getDataFromFile(args.configure or defaultSearchFolder)
 
-	for current_order, current_data in enumerate(host_to_data):
-		if len(current_data) == 4:
-			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
-				current_order = current_order, speed = current_data[2], host = None, data = data, requesting_application = current_data[3])
-		else:
-			g = gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1],
-				current_order = current_order, speed = current_data[2], host = current_data[3], data = data, requesting_application = current_data[4])
-		
-		all_threads.append(g)
+	all_threads = [gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1], 
+		current_order = current_order, speed = current_data[2], 
+		host = current_data[3], data = data, requesting_application = current_data[4])
+		for current_order, current_data in enumerate(host_to_data)	
+	]
 
 	gevent.joinall(all_threads)
 
@@ -172,17 +168,18 @@ def getDataFromFile(file):
 	else:
 		input_json = openJSON(files_matching_pattern[0])
 	
-	for idx2, valueIdx2 in input_json["applications"].items():
+	for application_name in input_json["applications"]:
 		if DEBUG:
-			print("Parsing for application...", idx2)
+			print("Parsing for application...", application_name)
 	
-		for idx, valueIdx in input_json["applications"][idx2]["items"].items():
+		for idx, valueIdx in input_json["applications"][application_name]["items"].items():
 			temporary_item = []
 			if isGoodIPv4(valueIdx["address"]):
 				temporary_item.append(valueIdx["address"])
 				temporary_item.append(valueIdx["packets_count"])
 				temporary_item.append(valueIdx["packet_interval"])
-				temporary_item.append(idx2)
+				temporary_item.append(None)
+				temporary_item.append(application_name)
 				tmp_arr.append(temporary_item)
 			else:
 				domain_to_ips = resolveDomainName(valueIdx["address"])
@@ -191,7 +188,7 @@ def getDataFromFile(file):
 					temporary_item.append(valueIdx["packets_count"])
 					temporary_item.append(valueIdx["packet_interval"])
 					temporary_item.append(valueIdx["address"])
-					temporary_item.append(idx2)
+					temporary_item.append(application_name)
 					tmp_arr.append(temporary_item)
 					temporary_item = []
 	
