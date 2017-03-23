@@ -12,22 +12,22 @@
         "2": {
           "packet_interval" : 0.25,
           "packets_count" : 5,
-          "address" : "https://twitter.com/"
+          "address" : "157.242.11.99"
         },
         "3": {
           "packet_interval": 0.2,
           "packets_count": 5,
-          "address": "http://facebook.com"
+          "address": "67.242.11.35"
         },
         "4": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "http://northshire.com"
+          "address": "157.240.11.35"
         },
         "5": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "whitekingdom.com"
+          "address": "157.242.112.35"
         },
         "6": {
           "packet_interval": 0.2,          

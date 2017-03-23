@@ -1,6 +1,6 @@
 import gevent
 from gevent import Timeout
-from gevent.subprocess import Popen, PIPE
+from gevent.subprocess import Popen, PIPE, STDOUT
 import re, time, json, argparse, sys, socket, glob, tempfile
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
@@ -18,7 +18,7 @@ def main():
 	host_to_ip = {}
 	output_json = {}
 	versionNumber = "3.0"
-	applicationName = "Momo's little Pinger"
+	applicationName = "Momo's Pinger"
 	defaultSearchFolder = "test_Data/input.json"
 
 	if not (args.time == 0 or args.packet == 0):
@@ -57,9 +57,13 @@ def main():
 			
 		
 		items = output_json["applications"][list_with_command_result[5]]["items"]
+		try:
+			packet_loss, rtt_avg, mdev = parseResult(list_with_command_result[1].decode())
+		except Exception as e:
+			packet_loss = 100
+			rtt_avg = "N/A"
+			mdev = "N/A"
 
-		packet_loss, rtt_avg, mdev = parseResult(list_with_command_result[1].decode())
-		
 		items[list_with_command_result[0].strip()+".rtt"] = {
 			"value": rtt_avg, 
 			"units": "ms", 
@@ -130,7 +134,7 @@ def resolveDomainName(hostname):
 	except socket.gaierror as e:
 		if DEBUG:
 			print("Had problem resolving", hostname)
-		ips=[]
+		ips=['hello', hostname]
 
 	if DEBUG:
 		print(hostname, "resolved to", ips)
@@ -179,8 +183,12 @@ def getDataFromFile(file):
 	if len(files_matching_pattern) > 1:
 		input_json = openJSON(concatenateFiles(files_matching_pattern))
 	else:
-		input_json = openJSON(files_matching_pattern[0])
-	
+		try:
+			input_json = openJSON(files_matching_pattern[0])
+		except Exception as e:
+			print("No file found...")
+			sys.exit()
+
 	for application_name in input_json["applications"]:
 		if DEBUG:
 			print("Parsing for application...", application_name)
@@ -225,7 +233,6 @@ def getInitialValues(time, packet):
 	return time, packet
 
 def parseResult(some_string):
-
 	packet_loss_group = re.search(r"(?<=received, )[0-9]+", some_string)
 	packet_loss = packet_loss_group.group(0)
 
@@ -233,7 +240,7 @@ def parseResult(some_string):
 	try:
 		values_arr = rtt_group.group(0).split("/")
 	except Exception as e:
-		return 100, "N/A", "N/A" 
+		return 100, "N/A", "N/A"
 
 	rtt_avg = float(values_arr[1])
 	mdev = float(values_arr[3])
@@ -245,7 +252,7 @@ def ping(ip, number_of_packages, current_order, speed, host, data, requesting_ap
 	if DEBUG:
 		print(command)
 
-	sub = Popen([command], stdout=PIPE, shell=True)
+	sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
 	out, err = sub.communicate()
 	data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
 

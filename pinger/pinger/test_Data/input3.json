@@ -28,11 +28,6 @@
           "packet_interval": 0.2,          
           "packets_count": 5,
           "address": "whitekingdom.com"
-        },
-        "6": {
-          "packet_interval": 0.2,          
-          "packets_count": 5,
-          "address": "157.242.11.35"
         }
       }
     }

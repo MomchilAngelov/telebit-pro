@@ -32,7 +32,7 @@
         "6": {
           "packet_interval": 0.2,          
           "packets_count": 5,
-          "address": "157.240.11.35"
+          "address": "157.240.122.35"
         }
       }
     }
