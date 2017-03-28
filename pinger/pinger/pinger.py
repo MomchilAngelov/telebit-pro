@@ -12,6 +12,12 @@ args = parser.parse_args()
 
 DEBUG = args.verbose 
 
+"""
+
+	Ako ne moga da izprqta request, N/A na pinga
+
+"""
+
 def main():
 	all_threads = []
 	data = {}

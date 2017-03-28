@@ -1,0 +1,20 @@
+{
+    "version": "3.0",
+    "name": "Momo's Pinger",
+    "applications": {
+        "icmp_pings2": {
+            "items": {
+                "graphicsmagic": {
+                    "name": "graphicsmagic - vulnerable(?)",
+                    "value": "1|0(depending on the level of input)",
+                    "type": "bool",
+                    "bug_names": {
+                        "<bug>": "<severity>"
+                    },
+                    "timestamp": 1490715299,
+                    "OS": "<debug>"
+                }
+            }
+        }
+    }
+}

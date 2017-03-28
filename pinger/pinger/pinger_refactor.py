@@ -1,9 +1,12 @@
 import gevent
 from gevent import Timeout
 from gevent.subprocess import Popen, PIPE, STDOUT
-import re, time, json, argparse, sys, socket, glob, tempfile
+from dicttoxml import dicttoxml
+
+import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
+parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
 parser.add_argument("-p", "--packet", help="The number of packets sent to the host/ip", type = int, default = False)
 parser.add_argument("-t", "--time", help="The time the packets should be bashed on the host!", type = int, default = False)
@@ -44,7 +47,7 @@ class Resolver():
 		except socket.gaierror as e:
 			if DEBUG:
 				print("Had problem resolving", hostname)
-			ips=[]
+			ips=[hostname]
 
 		if DEBUG:
 			print(hostname, "resolved to", ips)
@@ -139,41 +142,49 @@ class DataGiver():
 
 class DataProccessor():
 
-	def parseResult(some_string):
-		packet_loss_group = re.search(r"(?<=received, )[0-9]+", some_string)
-		packet_loss = packet_loss_group.group(0)
+	def parseResult(self, some_string):
 
-		rtt_group = re.search(r"(?<=mdev = )\d+\.\d+/\d+\.\d+/\d+\.\d+/\d+\.\d+", some_string)
-		try:
+		if "rtt min/avg/max/mdev" in some_string:
+			packet_loss_group = re.search(r"(?<=received, )[0-9]+", some_string)
+			packet_loss = packet_loss_group.group(0)
+			rtt_group = re.search(r"(?<=mdev = )\d+\.\d+/\d+\.\d+/\d+\.\d+/\d+\.\d+", some_string)
 			values_arr = rtt_group.group(0).split("/")
-		except Exception as e:
+			rtt_avg = float(values_arr[1])
+			mdev = float(values_arr[3])
+			return packet_loss, rtt_avg, mdev
+		
+		elif "Destination Net Unreachable" in some_string:
+			return "N/A", "N/A", "N/A"
+
+		elif "Network is unreachable" in some_string:
 			return 100, "N/A", "N/A"
 
-		rtt_avg = float(values_arr[1])
-		mdev = float(values_arr[3])
+		elif "unknown host" in some_string:
+			return "N/A", "N/A", "N/A"
 
-		return packet_loss, rtt_avg, mdev
+		else:
+			return 100, "N/A", "N/A"
 
 
 class Outputter():
 
 	def __init__(self, versionNumber, applicationName):
-		self.output_json = {}
-		self.output_json["version"] = versionNumber
-		self.output_json["name"] = applicationName
-		self.output_json["applications"] = {}
+		self.outputDictionary = {}
+		self.outputDictionary["version"] = versionNumber
+		self.outputDictionary["name"] = applicationName
+		self.outputDictionary["applications"] = {}
 
 	def createRootForApplications(self, data):
 		previous_value = None
 		for key, list_with_command_result in data.items():
 			if not list_with_command_result[5] == previous_value:
 				previous_value = list_with_command_result[5]
-				self.output_json["applications"][list_with_command_result[5]] = {}
-				self.output_json["applications"][list_with_command_result[5]]["name"] = list_with_command_result[6]
-				self.output_json["applications"][list_with_command_result[5]]["items"] = {}
+				self.outputDictionary["applications"][list_with_command_result[5]] = {}
+				self.outputDictionary["applications"][list_with_command_result[5]]["name"] = list_with_command_result[6]
+				self.outputDictionary["applications"][list_with_command_result[5]]["items"] = {}
 
 	def appendItemToOutputter(self, rtt_avg, packet_loss, list_with_command_result):
-		items = self.output_json["applications"][list_with_command_result[5]]["items"]
+		items = self.outputDictionary["applications"][list_with_command_result[5]]["items"]
 		
 		items[list_with_command_result[0].strip()+".rtt"] = {
 			"value": rtt_avg, 
@@ -197,14 +208,43 @@ class Outputter():
 		}
 
 	def getResultInJSON(self):
-		return json.dumps(self.output_json, ensure_ascii=False, indent = 4)
+		return json.dumps(self.outputDictionary, ensure_ascii=False, indent = 4)
 
+	def getResultInXML(self):
+		return xml.dom.minidom.parseString(str(dicttoxml(self.outputDictionary, custom_root='root', attr_type=False), "utf-8")).toprettyxml()
+
+	def getResult(self, outputFormat):
+		return eval("self.getResultIn"+(outputFormat.upper())+"()")
+
+
+
+
+def getInitialValues(time, packet):
+	if time == 0 and packet == 0:
+		return 2, 10
+
+	if time == 0 and packet != 0:
+		return packet*0.2, packet
+
+	if time != 0 and packet == 0:
+		return time, time*5
+
+	return time, packet
+
+def ping(ip, number_of_packages, current_order, speed, host, data, requesting_application, requesting_application_name):
+	command = 'ping -i {0} -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
+	if DEBUG:
+		print(command)
+
+	sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
+	out, err = sub.communicate()
+	data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
 
 def main():
 	all_threads = []
 	data = {}
 	host_to_ip = {}
-	output_json = {}
+	outputDictionary = {}
 
 	resolver = Resolver()
 	data_giver = DataGiver()
@@ -230,36 +270,9 @@ def main():
 	outputter.createRootForApplications(data)
 
 	for key, list_with_command_result in data.items():
-		try:
-			packet_loss, rtt_avg, mdev = data_proccessor.parseResult(list_with_command_result[1].decode())
-		except Exception as e:
-			print(list_with_command_result[1].decode())
-
+		packet_loss, rtt_avg, mdev = data_proccessor.parseResult(list_with_command_result[1].decode())
 		outputter.appendItemToOutputter(rtt_avg, packet_loss, list_with_command_result)
 
-	print(outputter.getResultInJSON())
-
-
-def getInitialValues(time, packet):
-	if time == 0 and packet == 0:
-		return 2, 10
-
-	if time == 0 and packet != 0:
-		return packet*0.2, packet
-
-	if time != 0 and packet == 0:
-		return time, time*5
-
-	return time, packet
-
-def ping(ip, number_of_packages, current_order, speed, host, data, requesting_application, requesting_application_name):
-	command = 'ping -i {0} -q -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
-	if DEBUG:
-		print(command)
-
-	sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
-	out, err = sub.communicate()
-	data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
-
+	print(outputter.getResult(outputFormat=args.output))
 
 main()
