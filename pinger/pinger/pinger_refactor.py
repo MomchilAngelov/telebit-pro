@@ -4,6 +4,11 @@ from gevent.subprocess import Popen, PIPE, STDOUT
 from dicttoxml import dicttoxml
 
 import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom
+from shutil import which
+
+if not 	which("ping"):
+	print("We need 'ping' to work...")
+	sys.exit(1)
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
@@ -154,7 +159,10 @@ class DataProccessor():
 			return packet_loss, rtt_avg, mdev
 		
 		elif "Destination Net Unreachable" in some_string:
-			return "N/A", "N/A", "N/A"
+			packet_loss_group = re.search(r"([0-9]+)(?=% packet loss)", some_string)
+			packet_loss = packet_loss_group.group(0)
+
+			return packet_loss, "N/A", "N/A"
 
 		elif "Network is unreachable" in some_string:
 			return 100, "N/A", "N/A"
@@ -163,7 +171,10 @@ class DataProccessor():
 			return "N/A", "N/A", "N/A"
 
 		else:
-			return 100, "N/A", "N/A"
+			packet_loss_group = re.search(r"([0-9]+)(?=% packet loss)", some_string)
+			packet_loss = packet_loss_group.group(0)
+
+			return packet_loss, "N/A", "N/A"
 
 
 class Outputter():

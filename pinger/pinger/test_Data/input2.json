@@ -18,6 +18,11 @@
           "packet_interval": 0.25,
           "packets_count": 5,
           "address": "204.15.23.57"
+        },
+        "4": {
+          "packet_interval": 0.25,
+          "packets_count": 5,
+          "address": "swagercheto.com"
         }
       }
     }

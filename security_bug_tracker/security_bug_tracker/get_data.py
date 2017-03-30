@@ -1,7 +1,12 @@
 import urllib.request
 import platform, sys, argparse, subprocess
+from shutil import which
 
 from bs4 import BeautifulSoup
+
+if not which("lsb_release"):
+	print("We need 'lsb_release' to work...")
+	sys.exit(1)
 
 parser = argparse.ArgumentParser(description = """For the given packages, returns whether or not the machine is vulnerable
  to the bugs with the given urgency level in each of the packages""")
