@@ -134,14 +134,8 @@ class DataGiver():
 		return temp
 
 	def openJSON(self, file):
-		try:
-			with open(file, "r") as f:
-				result_json = json.load(f)
-		except TypeError:
-			file.seek(0)
-			return_json = json.load(file)
-			file.close()
-			return return_json
+		with open(file, "r") as f:
+			result_json = json.load(f)
 		return result_json
 
 
