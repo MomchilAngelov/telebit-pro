@@ -3,10 +3,10 @@ from gevent import Timeout
 from gevent.subprocess import Popen, PIPE, STDOUT
 from dicttoxml import dicttoxml
 
-import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom
+import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, pyping
 from shutil import which
 
-if not 	which("ping"):
+if not which("ping"):
 	print("We need 'ping' to work...")
 	sys.exit(1)
 
@@ -23,6 +23,18 @@ DEBUG = args.verbose
 versionNumber = "3.0"
 applicationName = "Momo's Pinger"
 defaultSearchFolder = "test_Data/input.json"
+
+class MakePing():
+
+	def makeRequest(self, ip, number_of_packages, current_order, speed, host, data, requesting_application, requesting_application_name):
+		command = 'ping -i {0} -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
+		if DEBUG:
+			print(command)
+
+		sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
+		out, err = sub.communicate()
+		data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
+
 
 class Resolver():
 
@@ -144,7 +156,7 @@ class DataProccessor():
 	def parseResult(self, some_string):
 
 		if "rtt min/avg/max/mdev" in some_string:
-			packet_loss_group = re.search(r"(?<=received, )[0-9]+", some_string)
+			packet_loss_group = re.search(r"received, ([0-9]+)", some_string)
 			packet_loss = packet_loss_group.group(0)
 			rtt_group = re.search(r"(?<=mdev = )\d+\.\d+/\d+\.\d+/\d+\.\d+/\d+\.\d+", some_string)
 			values_arr = rtt_group.group(0).split("/")
@@ -236,15 +248,6 @@ def getInitialValues(time, packet):
 
 	return time, packet
 
-def ping(ip, number_of_packages, current_order, speed, host, data, requesting_application, requesting_application_name):
-	command = 'ping -i {0} -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
-	if DEBUG:
-		print(command)
-
-	sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
-	out, err = sub.communicate()
-	data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
-
 def main():
 	all_threads = []
 	data = {}
@@ -255,6 +258,7 @@ def main():
 	data_giver = DataGiver()
 	data_proccessor = DataProccessor()
 	outputter = Outputter(versionNumber = versionNumber, applicationName = applicationName)
+	request_creater = MakePing()
 
 	if not (args.time == 0 or args.packet == 0):
 		if args.time/args.packet < 0.2:
@@ -264,7 +268,7 @@ def main():
 	timeout_seconds, package_count = getInitialValues(args.time, args.packet)
 	host_to_data = data_giver.getDataFromFile(args.configure or defaultSearchFolder, resolver = resolver)
 
-	all_threads = [gevent.spawn(ping, ip = current_data[0], number_of_packages = current_data[1], 
+	all_threads = [gevent.spawn(request_creater.makeRequest, ip = current_data[0], number_of_packages = current_data[1], 
 		current_order = current_order, speed = current_data[2], 
 		host = current_data[3], data = data, requesting_application = current_data[4], requesting_application_name = current_data[5])
 		for current_order, current_data in enumerate(host_to_data)	

@@ -1,0 +1,151 @@
+{
+    "name": "Momo's Pinger",
+    "version": "3.0",
+    "applications": {
+        "icmp_pings": {
+            "name": "IMCP pings",
+            "items": {
+                "178.79.141.139.packet_loss": {
+                    "domain": "http://blaa.com",
+                    "timestamp": 1490891583,
+                    "type": "float",
+                    "value": "0",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[178.79.141.139 -> http://blaa.com] ICMP ping: packet loss",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 178.79.141.139"
+                },
+                "52.204.129.22.rtt": {
+                    "domain": "http://blaablaablaa.com",
+                    "timestamp": 1490891584,
+                    "type": "float",
+                    "value": "N/A",
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[52.204.129.22 -> http://blaablaablaa.com] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 52.204.129.22"
+                },
+                "52.204.129.22.packet_loss": {
+                    "domain": "http://blaablaablaa.com",
+                    "timestamp": 1490891584,
+                    "type": "float",
+                    "value": "100",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[52.204.129.22 -> http://blaablaablaa.com] ICMP ping: packet loss",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 52.204.129.22"
+                },
+                "216.58.212.46.packet_loss": {
+                    "domain": "https://google.com/",
+                    "timestamp": 1490891583,
+                    "type": "float",
+                    "value": "0",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[216.58.212.46 -> https://google.com/] ICMP ping: packet loss",
+                    "command": "ping -i 0.25 -W 1.25 -c 5 216.58.212.46"
+                },
+                "54.239.31.69.packet_loss": {
+                    "domain": "https://aws.amazon.com/",
+                    "timestamp": 1490891583,
+                    "type": "float",
+                    "value": "0",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[54.239.31.69 -> https://aws.amazon.com/] ICMP ping: packet loss",
+                    "command": "ping -i 0.25 -W 1.25 -c 5 54.239.31.69"
+                },
+                "54.239.31.69.rtt": {
+                    "domain": "https://aws.amazon.com/",
+                    "timestamp": 1490891583,
+                    "type": "float",
+                    "value": 123.284,
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[54.239.31.69 -> https://aws.amazon.com/] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.25 -W 1.25 -c 5 54.239.31.69"
+                },
+                "178.79.141.139.rtt": {
+                    "domain": "http://blaa.com",
+                    "timestamp": 1490891583,
+                    "type": "float",
+                    "value": 40.851,
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[178.79.141.139 -> http://blaa.com] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 178.79.141.139"
+                },
+                "sagbfasdbashre.com.packet_loss": {
+                    "domain": "http://sagbfasdbashre.com",
+                    "timestamp": 1490891582,
+                    "type": "float",
+                    "value": "N/A",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[sagbfasdbashre.com -> http://sagbfasdbashre.com] ICMP ping: packet loss",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 sagbfasdbashre.com"
+                },
+                "54.85.127.70.rtt": {
+                    "domain": "http://blaablaablaa.com",
+                    "timestamp": 1490891584,
+                    "type": "float",
+                    "value": "N/A",
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[54.85.127.70 -> http://blaablaablaa.com] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 54.85.127.70"
+                },
+                "sagbfasdbashre.com.rtt": {
+                    "domain": "http://sagbfasdbashre.com",
+                    "timestamp": 1490891582,
+                    "type": "float",
+                    "value": "N/A",
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[sagbfasdbashre.com -> http://sagbfasdbashre.com] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 sagbfasdbashre.com"
+                },
+                "216.58.212.46.rtt": {
+                    "domain": "https://google.com/",
+                    "timestamp": 1490891583,
+                    "type": "float",
+                    "value": 3.588,
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[216.58.212.46 -> https://google.com/] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.25 -W 1.25 -c 5 216.58.212.46"
+                },
+                "157.240.122.35.packet_loss": {
+                    "domain": null,
+                    "timestamp": 1490891584,
+                    "type": "float",
+                    "value": "100",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[157.240.122.35 -> None] ICMP ping: packet loss",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 157.240.122.35"
+                },
+                "157.240.122.35.rtt": {
+                    "domain": null,
+                    "timestamp": 1490891584,
+                    "type": "float",
+                    "value": "N/A",
+                    "units": "ms",
+                    "requesting_application": "icmp_pings",
+                    "name": "[157.240.122.35 -> None] ICMP ping: packet round trip time",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 157.240.122.35"
+                },
+                "54.85.127.70.packet_loss": {
+                    "domain": "http://blaablaablaa.com",
+                    "timestamp": 1490891584,
+                    "type": "float",
+                    "value": "100",
+                    "units": "%",
+                    "requesting_application": "icmp_pings",
+                    "name": "[54.85.127.70 -> http://blaablaablaa.com] ICMP ping: packet loss",
+                    "command": "ping -i 0.2 -W 1.0 -c 5 54.85.127.70"
+                }
+            }
+        }
+    }
+}

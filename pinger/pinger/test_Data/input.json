@@ -6,32 +6,32 @@
       "items": {
         "1": {
           "packet_interval" : 0.25,
-          "packets_count" : 5,
+          "packets_count" : 50,
           "address" : "https://google.com/"
         },
         "2": {
           "packet_interval" : 0.25,
-          "packets_count" : 5,
+          "packets_count" : 50,
           "address" : "https://aws.amazon.com/"
         },
         "3": {
           "packet_interval": 0.2,
-          "packets_count": 5,
+          "packets_count": 50,
           "address": "http://blaa.com"
         },
         "4": {
           "packet_interval": 0.2,          
-          "packets_count": 5,
+          "packets_count": 50,
           "address": "http://sagbfasdbashre.com"
         },
         "5": {
           "packet_interval": 0.2,          
-          "packets_count": 5,
+          "packets_count": 50,
           "address": "http://blaablaablaa.com"
         },
         "6": {
           "packet_interval": 0.2,          
-          "packets_count": 5,
+          "packets_count": 50,
           "address": "157.240.122.35"
         }
       }
