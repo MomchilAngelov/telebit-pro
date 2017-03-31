@@ -1,224 +1,261 @@
-import os, sys, socket, struct, select, time, signal
- 
-ICMP_ECHOREPLY  =    0 # Echo reply (per RFC792)
-ICMP_ECHO       =    8 # Echo request (per RFC792)
-ICMP_MAX_RECV   = 2048 # Max size of incoming buffer
- 
-MAX_SLEEP = 1000
- 
-class MyStats:
-    thisIP   = "0.0.0.0"
-    pktsSent = 0
-    pktsRcvd = 0
-    minTime  = 999999999
-    maxTime  = 0
-    totTime  = 0
-    fracLoss = 1.0
- 
-myStats = MyStats # Used globally
- 
-#=============================================================================#
+"""
+    This part is a fork of the python-ping project that makes
+    things work with gevent.
+"""
+
+import os, struct, sys, time, argparse
+
+import gevent
+from gevent import socket
+from gevent.pool import Pool
+from gevent.event import Event
+
+# From /usr/include/linux/icmp.h; your milage may vary.
+ICMP_ECHO_REQUEST = 8 # Seems to be the same on Solaris.
+
+
 def checksum(source_string):
     """
-    A port of the functionality of in_cksum() from ping.c
-    Ideally this would act on the string as a series of 16-bit ints (host
-    packed), but this works.
-    Network data is big-endian, hosts are typically little-endian
+    I'm not too confident that this is right but testing seems
+    to suggest that it gives the same answers as in_cksum in ping.c
     """
-    countTo = (int(len(source_string)/2))*2
     sum = 0
-    count = 0
- 
-    # Handle bytes in pairs (decoding as short ints)
-    loByte = 0
-    hiByte = 0
-    while count < countTo:
-        if (sys.byteorder == "little"):
-            loByte = source_string[count]
-            hiByte = source_string[count + 1]
-        else:
-            loByte = source_string[count + 1]
-            hiByte = source_string[count]
-        sum = sum + (hiByte * 256 + loByte)
-        count += 2
- 
-    # Handle last byte if applicable (odd-number of bytes)
-    # Endianness should be irrelevant in this case
-    if countTo < len(source_string): # Check for odd length
-        loByte = source_string[len(source_string)-1]
-        sum += loByte
- 
-    sum &= 0xffffffff # Truncate sum to 32 bits (a variance from ping.c, which
-                      # uses signed ints, but overflow is unlikely in ping)
- 
-    sum = (sum >> 16) + (sum & 0xffff)    # Add high 16 bits to low 16 bits
-    sum += (sum >> 16)                    # Add carry from above (if any)
-    answer = ~sum & 0xffff              # Invert and truncate to 16 bits
-    answer = socket.htons(answer)
- 
+    count_to = (len(source_string) // 2) * 2
+    for count in range(0, count_to, 2):
+        this = ord(source_string[count + 1]) * 256 + ord(source_string[count])
+        sum = sum + this
+        sum = sum & 0xffffffff # Necessary?
+
+    if count_to < len(source_string):
+        sum = sum + ord(source_string[len(source_string) - 1])
+        sum = sum & 0xffffffff # Necessary?
+
+    sum = (sum >> 16) + (sum & 0xffff)
+    sum = sum + (sum >> 16)
+    answer = ~sum
+    answer = answer & 0xffff
+
+    # Swap bytes. Bugger me if I know why.
+    answer = answer >> 8 | (answer << 8 & 0xff00)
+
     return answer
- 
-#=============================================================================#
-def do_one(destIP, timeout, mySeqNumber, numDataBytes):
-    """
-    Returns either the delay (in ms) or None on timeout.
-    """
-    global myStats
- 
-    delay = None
- 
-    try: # One could use UDP here, but it's obscure
-        mySocket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname("icmp"))
-    except socket.error as e:
-        print("failed. (socket error: '%s')" % e.args[1])
-        raise # raise the original error
- 
-    my_ID = os.getpid() & 0xFFFF
- 
-    sentTime = send_one_ping(mySocket, destIP, my_ID, mySeqNumber, numDataBytes)
-    if sentTime == None:
-        mySocket.close()
-        return delay
- 
-    myStats.pktsSent += 1;
- 
-    recvTime, dataSize, iphSrcIP, icmpSeqNumber, iphTTL = receive_one_ping(mySocket, my_ID, timeout)
- 
-    mySocket.close()
- 
-    if recvTime:
-        delay = (recvTime-sentTime)*1000
-        print("%d bytes from %s: icmp_seq=%d ttl=%d time=%d ms" % (
-            dataSize, socket.inet_ntoa(struct.pack("!I", iphSrcIP)), icmpSeqNumber, iphTTL, delay)
-        )
-        myStats.pktsRcvd += 1;
-        myStats.totTime += delay
-        if myStats.minTime > delay:
-            myStats.minTime = delay
-        if myStats.maxTime < delay:
-            myStats.maxTime = delay
-    else:
-        delay = None
-        print("Request timed out.")
- 
-    return delay
- 
-#=============================================================================#
-def send_one_ping(mySocket, destIP, myID, mySeqNumber, numDataBytes):
-    """
-    Send one ping to the given >destIP<.
-    """
-    destIP  =  socket.gethostbyname(destIP)
- 
-    # Header is type (8), code (8), checksum (16), id (16), sequence (16)
-    myChecksum = 0
- 
-    # Make a dummy heder with a 0 checksum.
-    header = struct.pack(
-        "!BBHHH", ICMP_ECHO, 0, myChecksum, myID, mySeqNumber
+
+def test_callback(ping):
+    template = '{ip:20s}{delay:15s}{hostname:40s}{message}'
+    message = template.format(
+        hostname = ping['dest_addr'],
+        ip       = ping['dest_ip'],
+        delay    = ping['success'] and str(round(ping['delay'], 6)) or '',
+        message  = 'message' in ping and ping['message'] or ''
     )
- 
-    padBytes = []
-    startVal = 0x42
-    for i in range(startVal, startVal + (numDataBytes)):
-        padBytes += [(i & 0xff)]  # Keep chars in the 0-255 range
-    data = bytes(padBytes)
- 
-    # Calculate the checksum on the data and the dummy header.
-    myChecksum = checksum(header + data) # Checksum is in network order
- 
-    # Now that we have the right checksum, we put that in. It's just easier
-    # to make up a new header than to stuff it into the dummy.
-    header = struct.pack(
-        "!BBHHH", ICMP_ECHO, 0, myChecksum, myID, mySeqNumber
-    )
- 
-    packet = header + data
- 
-    sendTime = time.time()
- 
-    try:
-        mySocket.sendto(packet, (destIP, 1)) # Port number is irrelevant for ICMP
-    except socket.error as e:
-        print("General failure (%s)" % (e.args[1]))
-        return
- 
-    return sendTime
- 
-#=============================================================================#
-def receive_one_ping(mySocket, myID, timeout):
+    message = message.strip()
+    print >>sys.stderr, message
+
+
+class GPing:
     """
-    Receive the ping from the socket. Timeout = in ms
+    This class, when instantiated will start listening for ICMP responses.
+    Then call its send method to send pings. Callbacks will be sent ping
+    details
     """
-    timeLeft = timeout/1000
- 
-    while True: # Loop while waiting for packet or timeout
-        startedSelect = time.time()
-        whatReady = select.select([mySocket], [], [], timeLeft)
-        howLongInSelect = (time.time() - startedSelect)
-        if whatReady[0] == []: # Timeout
-            return None, 0, 0, 0, 0
- 
-        timeReceived = time.time()
- 
-        recPacket, addr = mySocket.recvfrom(ICMP_MAX_RECV)
- 
-        ipHeader = recPacket[:20]
-        iphVersion, iphTypeOfSvc, iphLength, \
-        iphID, iphFlags, iphTTL, iphProtocol, \
-        iphChecksum, iphSrcIP, iphDestIP = struct.unpack(
-            "!BBHHHBBHII", ipHeader
+    def __init__(self,timeout=2,max_outstanding=10):
+        """
+        :timeout            - amount of time a ICMP echo request can be outstanding
+        :max_outstanding    - maximum number of outstanding ICMP echo requests without responses (limits traffic)
+        """
+        self.timeout = timeout
+        self.max_outstanding = max_outstanding
+
+        # id we will increment with each ping
+        self.id = 0
+
+        # object to hold and keep track of all of our self.pings
+        self.pings = {}
+
+        # Hold failures
+        self.failures = []
+
+        # event to file when we want to shut down
+        self.die_event = Event()
+
+        # setup socket
+        icmp = socket.getprotobyname("icmp")
+        try:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+        except socket.error as e:
+            if e.errno == 1:
+                # Operation not permitted
+                e.message = str(e) + (
+                    " - Note that ICMP messages can only be sent from processes"
+                    " running as root."
+                )
+                raise socket.error(e.message)
+            raise # raise the original error
+
+        self.receive_glet = gevent.spawn(self.__receive__)
+        self.processto_glet = gevent.spawn(self.__process_timeouts__)
+
+
+    def die(self):
+        """
+        try to shut everything down gracefully
+        """
+        print("shutting down")
+        self.die_event.set()
+        socket.cancel_wait()
+        gevent.joinall([self.receive_glet,self.processto_glet])
+
+
+    def join(self):
+        """
+        does a lot of nothing until self.pings is empty
+        """
+        while len(self.pings):
+            gevent.sleep()
+
+
+    def send(self, dest_addr, callback, psize=64):
+        """
+        Send a ICMP echo request.
+        :dest_addr - where to send it
+        :callback  - what to call when we get a response
+        :psize     - how much data to send with it
+        """
+        # make sure we dont have too many outstanding requests
+        while len(self.pings) >= self.max_outstanding:
+            gevent.sleep()
+
+        # figure out our id
+        packet_id = self.id
+
+        # increment our id, but wrap if we go over the max size for USHORT
+        self.id = (self.id + 1) % 2 ** 16
+
+
+        # make a spot for this ping in self.pings
+        self.pings[packet_id] = {'sent':False,'success':False,'error':False,'dest_addr':dest_addr,'dest_ip':None,'callback':callback}
+
+        # Resolve hostname
+        try:
+            dest_ip = socket.gethostbyname(dest_addr)
+            self.pings[packet_id]['dest_ip'] = dest_ip
+        except socket.gaierror as ex:
+            self.pings[packet_id]['error'] = True
+            self.pings[packet_id]['message'] = str(ex)
+            return
+
+
+        # Remove header size from packet size
+        psize = psize - 8
+
+        # Header is type (8), code (8), checksum (16), id (16), sequence (16)
+        my_checksum = 0
+
+        # Make a dummy heder with a 0 checksum.
+        header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, my_checksum, packet_id, 1)
+        my_bytes = struct.calcsize("d")
+        data = (psize - my_bytes) * "Q"
+        data = struct.pack("d", time.time()) + bytes(data, "utf-8")
+
+        # Calculate the checksum on the data and the dummy header.
+        my_checksum = checksum(header + data)
+
+        # Now that we have the right checksum, we put that in. It's just easier
+        # to make up a new header than to stuff it into the dummy.
+        header = struct.pack(
+            "bbHHh", ICMP_ECHO_REQUEST, 0, socket.htons(my_checksum), packet_id, 1
         )
- 
-        icmpHeader = recPacket[20:28]
-        icmpType, icmpCode, icmpChecksum, \
-        icmpPacketID, icmpSeqNumber = struct.unpack(
-            "!BBHHH", icmpHeader
-        )
- 
-        if icmpPacketID == myID: # Our packet
-            dataSize = len(recPacket) - 28
-            return timeReceived, dataSize, iphSrcIP, icmpSeqNumber, iphTTL
- 
-        timeLeft = timeLeft - howLongInSelect
-        if timeLeft <= 0:
-            return None, 0, 0, 0, 0
- 
-def verbose_ping(hostname, timeout = 1000, count = 3, numDataBytes = 55):
-    """
-    Send >count< ping to >destIP< with the given >timeout< and display
-    the result.
-    """
-    global myStats
- 
-    myStats = MyStats() # Reset the stats
- 
-    mySeqNumber = 0 # Starting value
- 
-    try:
-        destIP = socket.gethostbyname(hostname)
-        print("\nPYTHON PING %s (%s): %d data bytes" % (hostname, destIP, numDataBytes))
-    except socket.gaierror as e:
-        print("\nPYTHON PING: Unknown host: %s (%s)" % (hostname, e.args[1]))
-        print()
-        return
- 
-    myStats.thisIP = destIP
- 
-    for i in range(count):
-        delay = do_one(destIP, timeout, mySeqNumber, numDataBytes)
- 
-        if delay == None:
-            delay = 0
- 
-        mySeqNumber += 1
- 
-        # Pause for the remainder of the MAX_SLEEP period (if applicable)
-        if (MAX_SLEEP > delay):
-            time.sleep((MAX_SLEEP - delay)/1000)
- 
- 
-verbose_ping("0.0.0.0")
-verbose_ping("blablablablablablablalbalb.org")
-print("*"*50)
-print(myStats)
+        packet = header + data
+        # note the send_time for checking for timeouts
+        self.pings[packet_id]['send_time'] = time.time()
+
+        # send the packet
+        self.socket.sendto(packet, (dest_ip, 1)) # Don't know about the 1
+
+        #mark the packet as sent
+        self.pings[packet_id]['sent'] = True
+
+
+    def __process_timeouts__(self):
+        """
+        check to see if any of our pings have timed out
+        """
+        while not self.die_event.is_set():
+            for i in self.pings:
+
+                # Detect timeout
+                if self.pings[i]['sent'] and time.time() - self.pings[i]['send_time'] > self.timeout:
+                    self.pings[i]['error'] = True
+                    self.pings[i]['message'] = 'Timeout after {} seconds'.format(self.timeout)
+
+                # Handle all failures
+                if self.pings[i]['error'] == True:
+                    self.pings[i]['callback'](self.pings[i])
+                    self.failures.append(self.pings[i])
+                    del(self.pings[i])
+                    break
+
+            gevent.sleep()
+
+
+    def __receive__(self):
+        """
+        receive response packets
+        """
+        while not self.die_event.is_set():
+            # wait till we can recv
+            try:
+                socket.wait_read(self.socket.fileno())
+            except socket.error as e:
+                if e.errno == socket.EBADF:
+                    print("interrupting wait_read")
+                    return
+                # reraise original exceptions
+                print("re-throwing socket exception on wait_read()")
+                raise
+
+            time_received = time.time()
+            received_packet, addr = self.socket.recvfrom(1024)
+            icmpHeader = received_packet[20:28]
+            type, code, checksum, packet_id, sequence = struct.unpack(
+                "bbHHh", icmpHeader
+            )
+
+            if packet_id in self.pings:
+                bytes_received = struct.calcsize("d")
+                time_sent = struct.unpack("d", received_packet[28:28 + bytes_received])[0]
+                self.pings[packet_id]['delay'] = time_received - time_sent
+
+                # i'd call that a success
+                self.pings[packet_id]['success'] = True
+
+                # call our callback if we've got one
+                self.pings[packet_id]['callback'](self.pings[packet_id])
+
+                # delete the ping
+                del(self.pings[packet_id])
+
+    def print_failures(self):
+        print >>sys.stderr
+        print >>sys.stderr, 'Failures:'
+        template = '{hostname:45}{message}'
+        for failure in self.failures:
+            message = template.format(hostname=failure['dest_addr'], message=failure.get('message', 'unknown error'))
+            print >>sys.stderr, message
+
+
+def ping(hostnames):
+    gp = GPing()
+
+    template = '{ip:20s}{delay:15s}{hostname:40s}{message}'
+    header = template.format(hostname='Hostname', ip='IP', delay='Delay', message='Message')
+    print(header)
+
+    for hostname in hostnames:
+        gp.send(hostname, test_callback)
+    gp.join()
+    gp.print_failures()
+
+if __name__ == '__main__':
+    top_100_domains = ['google.com','facebook.com','youtube.com','yahoo.com','baidu.com','wikipedia.org','live.com','qq.com','twitter.com','amazon.com','linkedin.com','blogspot.com','google.co.in','taobao.com','sina.com.cn','yahoo.co.jp','msn.com','google.com.hk','wordpress.com','google.de','google.co.jp','google.co.uk','ebay.com','yandex.ru','163.com','google.fr','weibo.com','googleusercontent.com','bing.com','microsoft.com','google.com.br','babylon.com','soso.com','apple.com','mail.ru','t.co','tumblr.com','vk.com','google.ru','sohu.com','google.es','pinterest.com','google.it','craigslist.org','bbc.co.uk','livejasmin.com','tudou.com','paypal.com','blogger.com','xhamster.com','ask.com','youku.com','fc2.com','google.com.mx','xvideos.com','google.ca','imdb.com','flickr.com','go.com','tmall.com','avg.com','ifeng.com','hao123.com','zedo.com','conduit.com','google.co.id','pornhub.com','adobe.com','blogspot.in','odnoklassniki.ru','google.com.tr','cnn.com','aol.com','360buy.com','google.com.au','rakuten.co.jp','about.com','mediafire.com','alibaba.com','ebay.de','espn.go.com','wordpress.org','chinaz.com','google.pl','stackoverflow.com','netflix.com','ebay.co.uk','uol.com.br','amazon.de','ameblo.jp','adf.ly','godaddy.com','huffingtonpost.com','amazon.co.jp','cnet.com','globo.com','youporn.com','4shared.com','thepiratebay.se','renren.com']
+    ping(top_100_domains)
