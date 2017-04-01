@@ -1,7 +1,4 @@
-"""
-    This part is a fork of the python-ping project that makes
-    things work with gevent.
-"""
+#!/usr/bin/env python3
 
 import os, struct, sys, time, argparse
 
@@ -42,25 +39,13 @@ def checksum(source_string):
 
     return answer
 
-def test_callback(ping):
-    template = '\n\n\tip: {ip}\n\tDelay: {delay}\n\t{hostname}\n\t{message}'
-    
-    message = template.format(
-        hostname = ping['dest_addr'],
-        ip       = ping['dest_ip'],
-        delay    = ping['success'] and str(round(ping['delay'], 6)) or '',
-        message  = ping.get('message', '')
-    )
-    message = message.strip()
-
-
 class GPing:
     """
     This class, when instantiated will start listening for ICMP responses.
     Then call its send method to send pings. Callbacks will be sent ping
     details
     """
-    def __init__(self,timeout=2,max_outstanding=10):
+    def __init__(self,timeout=2,max_outstanding=100):
         """
         :timeout            - amount of time a ICMP echo request can be outstanding
         :max_outstanding    - maximum number of outstanding ICMP echo requests without responses (limits traffic)
@@ -116,7 +101,7 @@ class GPing:
             gevent.sleep()
 
 
-    def send(self, dest_addr, callback, psize=64):
+    def send(self, dest_addr, callback, idx, current_data, data, datapsize=64):
         """
         Send a ICMP echo request.
         :dest_addr - where to send it
@@ -124,9 +109,13 @@ class GPing:
         :psize     - how much data to send with it
         """
         # make sure we dont have too many outstanding requests
+        number_of_packages = current_data[1]
+
+
         while len(self.pings) >= self.max_outstanding:
             gevent.sleep()
 
+        psize = datapsize
         # figure out our id
         packet_id = self.id
 
@@ -135,7 +124,8 @@ class GPing:
 
 
         # make a spot for this ping in self.pings
-        self.pings[packet_id] = {'sent':False,'success':False,'error':False,'dest_addr':dest_addr,'dest_ip':None,'callback':callback}
+        self.pings[packet_id] = {'sent':False,'success':False,'error':False,'dest_addr':dest_addr,'dest_ip':None,'callback':callback,
+        'idx': idx, 'current_data': current_data, 'data_to_write_to': data, 'dtime': time.time(), 'packages_received': 0 }
 
         # Resolve hostname
         try:
@@ -169,10 +159,12 @@ class GPing:
         )
         packet = header + data
         # note the send_time for checking for timeouts
+        self.pings[packet_id]['data'] = data
         self.pings[packet_id]['send_time'] = time.time()
 
         # send the packet
-        self.socket.sendto(packet, (dest_ip, 1)) # Don't know about the 1
+        for i in range(number_of_packages):
+            self.socket.sendto(packet, (dest_ip, 1)) # Don't know about the 1
 
         #mark the packet as sent
         self.pings[packet_id]['sent'] = True
@@ -218,41 +210,35 @@ class GPing:
 
             time_received = time.time()
             received_packet, addr = self.socket.recvfrom(1024)
+            
+
+            # while(received_packet):
+            #     received_packet, addr = self.socket.recvfrom(1024)
+            #     currently_received += 1
+
             icmpHeader = received_packet[20:28]
             type, code, checksum, packet_id, sequence = struct.unpack(
                 "bbHHh", icmpHeader
             )
 
+
             if packet_id in self.pings:
                 bytes_received = struct.calcsize("d")
                 time_sent = struct.unpack("d", received_packet[28:28 + bytes_received])[0]
-                self.pings[packet_id]['delay'] = time_received - time_sent
+
 
                 # i'd call that a success
-                self.pings[packet_id]['success'] = True
-
                 # call our callback if we've got one
-                self.pings[packet_id]['callback'](self.pings[packet_id])
 
-                # delete the ping
-                del(self.pings[packet_id])
+                self.pings[packet_id]['packages_received'] += 1
+                if self.pings[packet_id]['packages_received'] == self.pings[packet_id]['current_data'][1]:
+                    self.pings[packet_id]['delay'] = time_received - time_sent
+                    self.pings[packet_id]['success'] = True
+                    self.pings[packet_id]['callback'](self.pings[packet_id])
+                    del(self.pings[packet_id])
 
     def print_failures(self):
         template = '{hostname:45}{message}'
         for failure in self.failures:
             message = template.format(hostname=failure['dest_addr'], message=failure.get('message', 'unknown error'))
 
-def ping(hostnames):
-    gp = GPing()
-
-    template = '{ip}{delay}{hostname}{message}'
-    header = template.format(hostname='Hostname', ip='IP', delay='Delay', message='Message')
-
-    for hostname in hostnames:
-        gp.send(hostname, test_callback)
-    gp.join()
-    gp.print_failures()
-
-if __name__ == '__main__':
-    top_100_domains = ['google.com','facebook.com','youtube.com','yahoo.com','baidu.com','wikipedia.org','live.com','qq.com','twitter.com','amazon.com','linkedin.com','blogspot.com','google.co.in','taobao.com','sina.com.cn','yahoo.co.jp','msn.com','google.com.hk','wordpress.com','google.de','google.co.jp','google.co.uk','ebay.com','yandex.ru','163.com','google.fr','weibo.com','googleusercontent.com','bing.com','microsoft.com','google.com.br','babylon.com','soso.com','apple.com','mail.ru','t.co','tumblr.com','vk.com','google.ru','sohu.com','google.es','pinterest.com','google.it','craigslist.org','bbc.co.uk','livejasmin.com','tudou.com','paypal.com','blogger.com','xhamster.com','ask.com','youku.com','fc2.com','google.com.mx','xvideos.com','google.ca','imdb.com','flickr.com','go.com','tmall.com','avg.com','ifeng.com','hao123.com','zedo.com','conduit.com','google.co.id','pornhub.com','adobe.com','blogspot.in','odnoklassniki.ru','google.com.tr','cnn.com','aol.com','360buy.com','google.com.au','rakuten.co.jp','about.com','mediafire.com','alibaba.com','ebay.de','espn.go.com','wordpress.org','chinaz.com','google.pl','stackoverflow.com','netflix.com','ebay.co.uk','uol.com.br','amazon.de','ameblo.jp','adf.ly','godaddy.com','huffingtonpost.com','amazon.co.jp','cnet.com','globo.com','youporn.com','4shared.com','thepiratebay.se','renren.com']
-    ping(top_100_domains)

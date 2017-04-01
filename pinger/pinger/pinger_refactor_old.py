@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import gevent
 from gevent import Timeout
 from gevent.subprocess import Popen, PIPE, STDOUT
@@ -8,8 +6,6 @@ from dicttoxml import dicttoxml
 import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom
 from shutil import which
 
-from gping import GPing
-
 if not which("ping"):
 	print("We need 'ping' to work...")
 	sys.exit(1)
@@ -17,6 +13,8 @@ if not which("ping"):
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
+parser.add_argument("-p", "--packet", help="The number of packets sent to the host/ip", type = int, default = False)
+parser.add_argument("-t", "--time", help="The time the packets should be bashed on the host!", type = int, default = False)
 parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
 args = parser.parse_args()
 
@@ -28,39 +26,14 @@ defaultSearchFolder = "test_Data/input.json"
 
 class MakePing():
 
-	def __init__(self):
-		self.gping = GPing()
-		self.times = 0;
-
 	def makeRequest(self, ip, number_of_packages, current_order, speed, host, data, requesting_application, requesting_application_name):
-		self.gping.send(hostname, test_callback)
-
 		command = 'ping -i {0} -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
 		if DEBUG:
 			print(command)
 
 		sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
 		out, err = sub.communicate()
-		#this should be the output, if we are going to make everything OK
 		data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
-
-
-	def ping(self, current_datas, data):
-		for idx, current_data in enumerate(current_datas):
-			self.gping.send(current_data[0], self.magic_callback, idx, current_data, data)
-			self.gping.join()
-
-	def magic_callback(self, ping):
-		packet_loss = 100-( ping['packages_received']/ping['current_data'][1] ) * 100 
-		data_to_write_to = ping['data_to_write_to']
-		data_to_write_to[ping['idx']] = [ping['dest_addr'], None, ping['dtime'], ping['current_data'][3], None, ping['current_data'][5]]
-
-		if ping['success']:
-			data_to_write_to[ping['idx']].append(ping['delay'])
-			data_to_write_to[ping['idx']].append(packet_loss)
-		else:
-			data_to_write_to[ping['idx']].append("N/A")
-			data_to_write_to[ping['idx']].append(packet_loss)
 
 
 class Resolver():
@@ -153,7 +126,7 @@ class DataGiver():
 
 	def concatenateFiles(self, array_of_files):
 
-		temp = tempfile.TemporaryFile(mode="r+")
+		temp = tempfile.TemporaryFile(mode="w+")
 		my_json = {}
 		my_json["version"] = "3.0"
 		my_json["applications"] = {}
@@ -184,6 +157,38 @@ class DataGiver():
 		return result_json
 
 
+class DataProccessor():
+
+	def parseResult(self, some_string):
+
+		if "rtt min/avg/max/mdev" in some_string:
+			packet_loss_group = re.search(r"received, ([0-9]+)", some_string)
+			packet_loss = packet_loss_group.group(0)
+			rtt_group = re.search(r"(?<=mdev = )\d+\.\d+/\d+\.\d+/\d+\.\d+/\d+\.\d+", some_string)
+			values_arr = rtt_group.group(0).split("/")
+			rtt_avg = float(values_arr[1])
+			mdev = float(values_arr[3])
+			return packet_loss, rtt_avg, mdev
+		
+		elif "Destination Net Unreachable" in some_string:
+			packet_loss_group = re.search(r"([0-9]+)(?=% packet loss)", some_string)
+			packet_loss = packet_loss_group.group(0)
+
+			return packet_loss, "N/A", "N/A"
+
+		elif "Network is unreachable" in some_string:
+			return 100, "N/A", "N/A"
+
+		elif "unknown host" in some_string:
+			return "N/A", "N/A", "N/A"
+
+		else:
+			packet_loss_group = re.search(r"([0-9]+)(?=% packet loss)", some_string)
+			packet_loss = packet_loss_group.group(0)
+
+			return packet_loss, "N/A", "N/A"
+
+
 class Outputter():
 
 	def __init__(self, versionNumber, applicationName):
@@ -193,18 +198,19 @@ class Outputter():
 		self.outputDictionary["applications"] = {}
 
 	def createRootForApplications(self, data):
+		previous_value = None
 		for key, list_with_command_result in data.items():
-			if list_with_command_result[5] not in self.outputDictionary["applications"]:
+			if not list_with_command_result[5] == previous_value:
 				previous_value = list_with_command_result[5]
 				self.outputDictionary["applications"][list_with_command_result[5]] = {}
 				self.outputDictionary["applications"][list_with_command_result[5]]["name"] = list_with_command_result[6]
 				self.outputDictionary["applications"][list_with_command_result[5]]["items"] = {}
 
-	def appendItemToOutputter(self, list_with_command_result):
+	def appendItemToOutputter(self, rtt_avg, packet_loss, list_with_command_result):
 		items = self.outputDictionary["applications"][list_with_command_result[5]]["items"]
 		
 		items[list_with_command_result[0].strip()+".rtt"] = {
-			"value": list_with_command_result[6], 
+			"value": rtt_avg, 
 			"units": "ms", 
 			"name": "[{0} -> {1}] ICMP ping: packet round trip time".format(list_with_command_result[0].strip(), list_with_command_result[3]), 
 			"type": "float", 
@@ -215,7 +221,7 @@ class Outputter():
 		}
 
 		items[list_with_command_result[0].strip()+".packet_loss"] = {
-			"value": list_with_command_result[7],
+			"value": packet_loss,
 			"units": "%", "name": "[{0} -> {1}] ICMP ping: packet loss".format(list_with_command_result[0].strip(), list_with_command_result[3]),
 			"type": "float",
 			"timestamp": int(list_with_command_result[2]), 
@@ -234,6 +240,20 @@ class Outputter():
 		return eval("self.getResultIn"+(outputFormat.upper())+"()")
 
 
+
+
+def getInitialValues(time, packet):
+	if time == 0 and packet == 0:
+		return 2, 10
+
+	if time == 0 and packet != 0:
+		return packet*0.2, packet
+
+	if time != 0 and packet == 0:
+		return time, time*5
+
+	return time, packet
+
 def main():
 	all_threads = []
 	data = {}
@@ -242,16 +262,31 @@ def main():
 
 	resolver = Resolver()
 	data_giver = DataGiver()
+	data_proccessor = DataProccessor()
 	outputter = Outputter(versionNumber = versionNumber, applicationName = applicationName)
 	request_creater = MakePing()
 
+	if not (args.time == 0 or args.packet == 0):
+		if args.time/args.packet < 0.2:
+			print("We can't do that...\nYou are going too fast!")
+			sys.exit()
+
+	timeout_seconds, package_count = getInitialValues(args.time, args.packet)
 	host_to_data = data_giver.getDataFromFile(args.configure or defaultSearchFolder, resolver = resolver)
 
-	request_creater.ping(host_to_data, data)
+	all_threads = [gevent.spawn(request_creater.makeRequest, ip = current_data[0], number_of_packages = current_data[1], 
+		current_order = current_order, speed = current_data[2], 
+		host = current_data[3], data = data, requesting_application = current_data[4], requesting_application_name = current_data[5])
+		for current_order, current_data in enumerate(host_to_data)	
+	]
+
+	gevent.joinall(all_threads)
 
 	outputter.createRootForApplications(data)
+
 	for key, list_with_command_result in data.items():
-		outputter.appendItemToOutputter(list_with_command_result)
+		packet_loss, rtt_avg, mdev = data_proccessor.parseResult(list_with_command_result[1].decode())
+		outputter.appendItemToOutputter(rtt_avg, packet_loss, list_with_command_result)
 
 	print(outputter.getResult(outputFormat=args.output))
 
