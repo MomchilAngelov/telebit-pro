@@ -4,7 +4,7 @@
     "icmp_pings2": {
       "name": "IMCP2 pings",
       "items": {
-         "1": {
+        "1": {
           "packet_interval" : 0.25,
           "packets_count" : 5,
           "address" : "1.2.3.4"

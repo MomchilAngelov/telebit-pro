@@ -160,6 +160,7 @@ class GPing:
         packet = header + data
         # note the send_time for checking for timeouts
         self.pings[packet_id]['data'] = data
+        self.pings[packet_id]['application_id'] = current_data[4]
         self.pings[packet_id]['send_time'] = time.time()
 
         # send the packet
@@ -196,7 +197,7 @@ class GPing:
         """
         receive response packets
         """
-        while not self.die_event.is_set():
+        while 1:
             # wait till we can recv
             try:
                 socket.wait_read(self.socket.fileno())
@@ -209,7 +210,7 @@ class GPing:
                 raise
 
             time_received = time.time()
-            received_packet, addr = self.socket.recvfrom(1024)
+            received_packet, addr = self.socket.recvfrom(64)
             
 
             # while(received_packet):
@@ -230,7 +231,8 @@ class GPing:
                 # i'd call that a success
                 # call our callback if we've got one
 
-                self.pings[packet_id]['packages_received'] += 1
+                self.pings[packet_id]['packages_received'] = self.pings[packet_id]['packages_received'] + 1
+                
                 if self.pings[packet_id]['packages_received'] == self.pings[packet_id]['current_data'][1]:
                     self.pings[packet_id]['delay'] = time_received - time_sent
                     self.pings[packet_id]['success'] = True

@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 
 import gevent
+from gevent import monkey
+monkey.patch_socket()
+
 from gevent import Timeout
 from gevent.subprocess import Popen, PIPE, STDOUT
 from dicttoxml import dicttoxml
 
-import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom
+import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy
 from shutil import which
 
 from gping import GPing
-
-if not which("ping"):
-	print("We need 'ping' to work...")
-	sys.exit(1)
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
@@ -26,34 +25,26 @@ versionNumber = "3.0"
 applicationName = "Momo's Pinger"
 defaultSearchFolder = "test_Data/input.json"
 
+
 class MakePing():
 
 	def __init__(self):
 		self.gping = GPing()
 		self.times = 0;
 
-	def makeRequest(self, ip, number_of_packages, current_order, speed, host, data, requesting_application, requesting_application_name):
-		self.gping.send(hostname, test_callback)
-
-		command = 'ping -i {0} -W {1} -c {2} {3}'.format(speed, speed * number_of_packages, number_of_packages, ip)
-		if DEBUG:
-			print(command)
-
-		sub = Popen([command], stdout=PIPE, stderr=STDOUT, shell=True)
-		out, err = sub.communicate()
-		#this should be the output, if we are going to make everything OK
-		data[current_order] = [ip, out, time.time(), host, command, requesting_application, requesting_application_name]
-
-
 	def ping(self, current_datas, data):
-		for idx, current_data in enumerate(current_datas):
-			self.gping.send(current_data[0], self.magic_callback, idx, current_data, data)
-			self.gping.join()
+		print("IPs: {0}".format(len(data)))
+		all_threads = [gevent.spawn(self.gping.send, current_data[0], self.magic_callback, idx, current_data, data)
+			for idx, current_data in enumerate(current_datas)
+		]
+		print("The size of IPs that i should parse: {0}".format(len(all_threads)))
+		gevent.joinall(all_threads)
+		print("IPs: {0}".format(len(data)))
 
 	def magic_callback(self, ping):
 		packet_loss = 100-( ping['packages_received']/ping['current_data'][1] ) * 100 
 		data_to_write_to = ping['data_to_write_to']
-		data_to_write_to[ping['idx']] = [ping['dest_addr'], None, ping['dtime'], ping['current_data'][3], None, ping['current_data'][5]]
+		data_to_write_to[ping['idx']] = [ping['dest_addr'], None, ping['dtime'], ping['current_data'][3], None, ping['current_data'][5], ping['current_data'][4]]
 
 		if ping['success']:
 			data_to_write_to[ping['idx']].append(ping['delay'])
@@ -64,6 +55,9 @@ class MakePing():
 
 
 class Resolver():
+
+	def __init__(self):
+		self.iterations = 0
 
 	def isGoodIPv4(self, s):
 		pieces = s.split('.')
@@ -82,8 +76,8 @@ class Resolver():
 			hostname = hostname[:-1]
 		return hostname	
 
-	def resolveDomainName(self, hostname):
-		
+	def resolveDomainName(self, hostname, array_with_data, appendHere):
+
 		hostname = self.normalizeInputForHostname(hostname)
 
 		try:
@@ -96,13 +90,26 @@ class Resolver():
 		if DEBUG:
 			print(hostname, "resolved to", ips)
 		
-		return ips
+		for ip in ips:
+			temporary_item = []
+			temporary_item.append(ip)
+			temporary_item.append(array_with_data["packets_count"])
+			temporary_item.append(array_with_data["packet_interval"])
+			temporary_item.append(array_with_data["address"])
+			temporary_item.append(array_with_data["application_name"])
+			temporary_item.append(array_with_data['application_name_human_name'])
+			
+			appendHere.append(temporary_item)
+			self.callDummyPing(temporary_item)
 
+
+	def callDummyPing(self, item):
+		print(item)
 
 class DataGiver():
 
 	def __init__(self):
-		pass
+		self.domain_to_ips_list = []
 
 	def getDataFromFile(self, file, resolver):
 		if DEBUG:
@@ -135,19 +142,21 @@ class DataGiver():
 					temporary_item.append(input_json["applications"][application_name]["name"])
 					tmp_arr.append(temporary_item)
 				else:
-					domain_to_ips = resolver.resolveDomainName(valueIdx["address"])
-					for ip in domain_to_ips:
-						temporary_item.append(ip)
-						temporary_item.append(valueIdx["packets_count"])
-						temporary_item.append(valueIdx["packet_interval"])
-						temporary_item.append(valueIdx["address"])
-						temporary_item.append(application_name)
-						temporary_item.append(input_json["applications"][application_name]["name"])
-						tmp_arr.append(temporary_item)
-						temporary_item = []
+					valueIdx['application_name'] = application_name
+					valueIdx['application_name_human_name'] = input_json["applications"][application_name]["name"]
+					valueIdx['idx'] = idx
+					self.domain_to_ips_list.append(valueIdx)
+					
+		if len(self.domain_to_ips_list) > 0:
+			array_of_resolvers = [gevent.spawn(resolver.resolveDomainName, should_be_resolved["address"], should_be_resolved, tmp_arr)
+				for should_be_resolved in self.domain_to_ips_list	
+			]
+
+			gevent.joinall(array_of_resolvers)
 		
-		if DEBUG:
-			print(tmp_arr)
+		# if DEBUG:
+		# 	print(tmp_arr)
+		print("I resolved {0} ips".format(len(tmp_arr)))
 
 		return tmp_arr
 
@@ -194,34 +203,33 @@ class Outputter():
 
 	def createRootForApplications(self, data):
 		for key, list_with_command_result in data.items():
-			if list_with_command_result[5] not in self.outputDictionary["applications"]:
-				previous_value = list_with_command_result[5]
-				self.outputDictionary["applications"][list_with_command_result[5]] = {}
-				self.outputDictionary["applications"][list_with_command_result[5]]["name"] = list_with_command_result[6]
-				self.outputDictionary["applications"][list_with_command_result[5]]["items"] = {}
+			if list_with_command_result[6] not in self.outputDictionary["applications"]:
+				previous_value = list_with_command_result[6]
+				self.outputDictionary["applications"][list_with_command_result[6]] = {}
+				self.outputDictionary["applications"][list_with_command_result[6]]["name"] = list_with_command_result[5]
+				self.outputDictionary["applications"][list_with_command_result[6]]["items"] = {}
 
 	def appendItemToOutputter(self, list_with_command_result):
-		items = self.outputDictionary["applications"][list_with_command_result[5]]["items"]
-		
+		items = self.outputDictionary["applications"][list_with_command_result[6]]["items"]
 		items[list_with_command_result[0].strip()+".rtt"] = {
-			"value": list_with_command_result[6], 
+			"value": list_with_command_result[7], 
 			"units": "ms", 
 			"name": "[{0} -> {1}] ICMP ping: packet round trip time".format(list_with_command_result[0].strip(), list_with_command_result[3]), 
 			"type": "float", 
 			"timestamp": int(list_with_command_result[2]), 
 			"domain": list_with_command_result[3], 
 			"command": list_with_command_result[4],
-			"requesting_application": list_with_command_result[5]
+			"requesting_application": list_with_command_result[6]
 		}
 
 		items[list_with_command_result[0].strip()+".packet_loss"] = {
-			"value": list_with_command_result[7],
+			"value": list_with_command_result[8],
 			"units": "%", "name": "[{0} -> {1}] ICMP ping: packet loss".format(list_with_command_result[0].strip(), list_with_command_result[3]),
 			"type": "float",
 			"timestamp": int(list_with_command_result[2]), 
 			"domain": list_with_command_result[3],
 			"command": list_with_command_result[4],
-			"requesting_application": list_with_command_result[5]
+			"requesting_application": list_with_command_result[6]
 		}
 
 	def getResultInJSON(self):
@@ -246,13 +254,12 @@ def main():
 	request_creater = MakePing()
 
 	host_to_data = data_giver.getDataFromFile(args.configure or defaultSearchFolder, resolver = resolver)
-
 	request_creater.ping(host_to_data, data)
+	outputter.createRootForApplications(data = data)
 
-	outputter.createRootForApplications(data)
 	for key, list_with_command_result in data.items():
 		outputter.appendItemToOutputter(list_with_command_result)
 
-	print(outputter.getResult(outputFormat=args.output))
+	#print(outputter.getResult(outputFormat=args.output))
 
 main()
