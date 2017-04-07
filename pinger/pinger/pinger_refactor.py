@@ -124,7 +124,7 @@ class Pinger():
 				self.socket.send(packet)
 				self.start_time = time.time()
 			except Exception as e:
-				print("Error sending packet from ping on Pinger: \n", e)
+				#print("Error sending packet from ping on Pinger: \n", e)
 				pass
 			
 			try:
@@ -132,7 +132,7 @@ class Pinger():
 				data = self.readPacket(received_packet)
 				self.end_time = time.time()
 			except Exception as e:
-				print("Error receiving packet from ping on Pinger: \n", e)
+				#print("Error receiving packet from ping on Pinger: \n", e)
 				pass
 			else:
 				self.curr_ping += 1 
