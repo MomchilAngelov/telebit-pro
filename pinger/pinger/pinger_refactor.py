@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 
 import gevent
-from gevent import monkey
-monkey.patch_socket()
+
 
 from gevent import Timeout
-from gevent.subprocess import Popen, PIPE, STDOUT
 from dicttoxml import dicttoxml
 
-import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy
-from shutil import which
-
-from gping import GPing
+import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct
+from gevent import socket
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
@@ -26,38 +22,129 @@ applicationName = "Momo's Pinger"
 defaultSearchFolder = "test_Data/input.json"
 
 
-class MakePing():
+class Pinger():
 
-	def __init__(self):
-		self.gping = GPing()
-		self.times = 0;
+	def __init__(self, data, _id, _number_of_pings, _timeout, ip):
+		self.im_broken = 0
+		self.data = data
+		self._id = _id
+		self._number_of_pings = _number_of_pings
+		self._timeout = _timeout
+		self.curr_ping = 0
+		self.ip = ip
+		try:
+			self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname('icmp'))
+		except IOError as e:
+			self.im_broken = 1
+		self.total_time = 0
+		self.total_received_packets = 0
 
-	def ping(self, current_datas, data):
-		print("IPs: {0}".format(len(data)))
-		all_threads = [gevent.spawn(self.gping.send, current_data[0], self.magic_callback, idx, current_data, data)
-			for idx, current_data in enumerate(current_datas)
-		]
-		print("The size of IPs that i should parse: {0}".format(len(all_threads)))
-		gevent.joinall(all_threads)
-		print("IPs: {0}".format(len(data)))
+	def makeGoodPacket(self):
+		ICMP_ECHO_REQUEST = 8
+		fullPacketSize = 64
+		sizeOfSentPacket = fullPacketSize
+		sizeOfSentPacket -= 8
+		checkSum = 0
+		my_bytes = struct.calcsize("d")
+		header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, checkSum, self._id, 1)
 
-	def magic_callback(self, ping):
-		packet_loss = 100-( ping['packages_received']/ping['current_data'][1] ) * 100 
-		data_to_write_to = ping['data_to_write_to']
-		data_to_write_to[ping['idx']] = [ping['dest_addr'], None, ping['dtime'], ping['current_data'][3], None, ping['current_data'][5], ping['current_data'][4]]
+		data = (fullPacketSize - my_bytes) * "Q"
+		data = struct.pack("d", time.time()) + bytes(data, "utf-8")
 
-		if ping['success']:
-			data_to_write_to[ping['idx']].append(ping['delay'])
-			data_to_write_to[ping['idx']].append(packet_loss)
+		checkSum = self.checksum(header + data)
+
+		header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, socket.htons(checkSum), self._id, 1)
+		packet = header + data
+
+		return packet
+
+	def readPacket(self, packet):
+		icmpHeader = packet[20:28]
+		type, code, checksum, data, sequence = struct.unpack("bbHHh", icmpHeader)
+		return data
+
+
+	def checksum(self, source_string):
+		my_sum = 0
+		count_to = (len(source_string) // 2) * 2
+		for count in range(0, count_to, 2):
+			this = ((source_string[count + 1]) * 256) + source_string[count]
+			my_sum += this
+
+		if count_to < len(source_string):
+			my_sum = my_sum + ord(source_string[len(source_string) - 1])
+
+		my_sum = (my_sum >> 16) + (my_sum & 0xffff)
+		answer = (~(my_sum + (my_sum >> 16))) & 0xffff
+		answer = answer >> 8 | (answer << 8 & 0xff00)
+
+		return answer
+
+	def ping(self, outputter):
+		while self.im_broken:
+			try:
+				self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname('icmp'))
+				self.socket.settimeout(self._timeout)
+				self.im_broken = 0
+			except IOError as e:
+				gevent.sleep(1)
+
+		self.mine_arr = []
+		self.data.append(self.mine_arr)
+		try:
+			self.socket.connect((self.ip, 0))
+		except Exception as e:
+			self.mine_arr.append(time.time())
+			self.mine_arr.append("N/A")
+			self.mine_arr.append("N/A")
+			self.socket.close()
+			outputter.appendItemToOutputter(self.data)
+
+			return
+
+		for x in range(self._number_of_pings):
+			packet = self.makeGoodPacket()
+			
+			try:
+				self.socket.send(packet)
+				self.start_time = time.time()
+			except Exception as e:
+				pass
+				#print("Error sending packet from ping on Pinger: \n", e)
+			
+			try:
+				received_packet, addr = self.socket.recvfrom(64)
+				data = self.readPacket(received_packet)
+				self.end_time = time.time()
+			except Exception as e:
+				pass
+				#print("Error receiving packet from ping on Pinger: \n", e)
+			else:
+				self.curr_ping += 1 
+				self.total_received_packets += 1
+				self.total_time += self.end_time - self.start_time
+
+		packet_loss = (1-(self.total_received_packets/self._number_of_pings)) * 100
+
+		self.mine_arr.append(time.time())
+		self.mine_arr.append(packet_loss)
+		if packet_loss == 100:
+			self.mine_arr.append("N/A")
 		else:
-			data_to_write_to[ping['idx']].append("N/A")
-			data_to_write_to[ping['idx']].append(packet_loss)
+			#print("rtt:", self.total_time/self._number_of_pings)
+			self.mine_arr.append((self.total_time/self._number_of_pings) * 1000)
+	
+		self.socket.close()
+
+		outputter.appendItemToOutputter(self.data)
 
 
 class Resolver():
 
-	def __init__(self):
+	def __init__(self, threads, outputter):
 		self.iterations = 0
+		self.threads = threads
+		self.outputter = outputter
 
 	def isGoodIPv4(self, s):
 		pieces = s.split('.')
@@ -82,7 +169,7 @@ class Resolver():
 
 		try:
 			ips = socket.gethostbyname_ex(hostname)[2]
-		except socket.gaierror as e:
+		except Exception as e:
 			if DEBUG:
 				print("Had problem resolving", hostname)
 			ips=[hostname]
@@ -101,10 +188,16 @@ class Resolver():
 			
 			appendHere.append(temporary_item)
 			self.callDummyPing(temporary_item)
-
+			self.iterations += 1
+			if not (self.iterations % 10):
+				print(self.iterations)
 
 	def callDummyPing(self, item):
-		print(item)
+		pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
+		while not pinger:
+			pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
+
+		self.threads.append(gevent.spawn(pinger.ping, self.outputter))
 
 class DataGiver():
 
@@ -154,9 +247,8 @@ class DataGiver():
 
 			gevent.joinall(array_of_resolvers)
 		
-		# if DEBUG:
-		# 	print(tmp_arr)
-		print("I resolved {0} ips".format(len(tmp_arr)))
+		if DEBUG:
+			print(tmp_arr)
 
 		return tmp_arr
 
@@ -201,35 +293,41 @@ class Outputter():
 		self.outputDictionary["name"] = applicationName
 		self.outputDictionary["applications"] = {}
 
-	def createRootForApplications(self, data):
-		for key, list_with_command_result in data.items():
-			if list_with_command_result[6] not in self.outputDictionary["applications"]:
-				previous_value = list_with_command_result[6]
-				self.outputDictionary["applications"][list_with_command_result[6]] = {}
-				self.outputDictionary["applications"][list_with_command_result[6]]["name"] = list_with_command_result[5]
-				self.outputDictionary["applications"][list_with_command_result[6]]["items"] = {}
+	def createRootForApplications(self, data, name):
+		self.outputDictionary["applications"][data] = {}
+		self.outputDictionary["applications"][data]["name"] = name
+		self.outputDictionary["applications"][data]["items"] = {}
 
-	def appendItemToOutputter(self, list_with_command_result):
-		items = self.outputDictionary["applications"][list_with_command_result[6]]["items"]
-		items[list_with_command_result[0].strip()+".rtt"] = {
-			"value": list_with_command_result[7], 
+	def appendItemToOutputter(self, output):
+		#print(output)
+		rtt = output[6].pop()
+		packet_loss = output[6].pop()
+		timestamp = output[6].pop()
+
+		try:
+			items = self.outputDictionary["applications"][output[4]]["items"]
+		except Exception as e:
+			self.createRootForApplications(output[4], output[5])
+			items = self.outputDictionary["applications"][output[4]]["items"]
+
+
+		items[output[0].strip()+".rtt"] = {
+			"value": rtt, 
 			"units": "ms", 
-			"name": "[{0} -> {1}] ICMP ping: packet round trip time".format(list_with_command_result[0].strip(), list_with_command_result[3]), 
+			"name": "[{0} -> {1}] ICMP ping: packet round trip time".format(output[0].strip(), output[3]), 
 			"type": "float", 
-			"timestamp": int(list_with_command_result[2]), 
-			"domain": list_with_command_result[3], 
-			"command": list_with_command_result[4],
-			"requesting_application": list_with_command_result[6]
+			"timestamp": int(timestamp), 
+			"domain": output[3], 
+			"requesting_application": output[5]
 		}
 
-		items[list_with_command_result[0].strip()+".packet_loss"] = {
-			"value": list_with_command_result[8],
-			"units": "%", "name": "[{0} -> {1}] ICMP ping: packet loss".format(list_with_command_result[0].strip(), list_with_command_result[3]),
+		items[output[0].strip()+".packet_loss"] = {
+			"value": packet_loss,
+			"units": "%", "name": "[{0} -> {1}] ICMP ping: packet loss".format(output[0].strip(), output[3]),
 			"type": "float",
-			"timestamp": int(list_with_command_result[2]), 
-			"domain": list_with_command_result[3],
-			"command": list_with_command_result[4],
-			"requesting_application": list_with_command_result[6]
+			"timestamp": int(timestamp), 
+			"domain": output[3],
+			"requesting_application": output[5]
 		}
 
 	def getResultInJSON(self):
@@ -243,22 +341,17 @@ class Outputter():
 
 
 def main():
-	all_threads = []
-	data = {}
-	host_to_ip = {}
-	outputDictionary = {}
+	all_threads_2 = []
 
-	resolver = Resolver()
 	data_giver = DataGiver()
 	outputter = Outputter(versionNumber = versionNumber, applicationName = applicationName)
-	request_creater = MakePing()
+	resolver = Resolver(all_threads_2, outputter)
 
 	host_to_data = data_giver.getDataFromFile(args.configure or defaultSearchFolder, resolver = resolver)
-	request_creater.ping(host_to_data, data)
-	outputter.createRootForApplications(data = data)
 
-	for key, list_with_command_result in data.items():
-		outputter.appendItemToOutputter(list_with_command_result)
+
+	gevent.joinall(all_threads_2)
+
 
 	#print(outputter.getResult(outputFormat=args.output))
 
