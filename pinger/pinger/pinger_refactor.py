@@ -3,28 +3,50 @@
 import gevent
 
 
-from gevent import Timeout
 from dicttoxml import dicttoxml
 
 import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct
-from gevent import socket
+from gevent import socket, Timeout 
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
 parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
+parser.add_argument("-s", "--stats", help="Give some statistics on the screen!", action = "store_true", default = False)
 args = parser.parse_args()
 
 DEBUG = args.verbose 
+STATS = args.stats
 
 versionNumber = "3.0"
 applicationName = "Momo's Pinger"
 defaultSearchFolder = "test_Data/input.json"
 
+#socket.getprotobyname отваря файла на OS-то в /etc/protocols, 
+	#и мисля че го загнездва там, и ми дава no protocol error като станат повече от 1200 greenlet-а, затова го изнасям
+ICMP_CONSTANT = socket.getprotobyname('icmp')
+OPENED_SOCKETS = 0
+CURRENT_OPENED_HOST = 0
+SHOULD_ACCEPT_MORE_HOSTS = 1
+
+class Statistics():
+
+	def printData(self):
+		while 1:
+			global SHOULD_ACCEPT_MORE_HOSTS
+			if STATS:
+				print("Opened sockets: {0}| Current host number: {1}".format(OPENED_SOCKETS, CURRENT_OPENED_HOST))
+			if OPENED_SOCKETS > 500:
+				SHOULD_ACCEPT_MORE_HOSTS = 0
+			if OPENED_SOCKETS < 200: 
+				SHOULD_ACCEPT_MORE_HOSTS = 1
+			gevent.sleep(2)
 
 class Pinger():
 
 	def __init__(self, data, _id, _number_of_pings, _timeout, ip):
+		global OPENED_SOCKETS
+		global SHOULD_ACCEPT_MORE_HOSTS
 		self.im_broken = 0
 		self.data = data
 		self._id = _id
@@ -32,12 +54,11 @@ class Pinger():
 		self._timeout = _timeout
 		self.curr_ping = 0
 		self.ip = ip
-		try:
-			self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname('icmp'))
-		except IOError as e:
-			self.im_broken = 1
+		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
+		self.socket.settimeout(self._timeout)
 		self.total_time = 0
 		self.total_received_packets = 0
+		OPENED_SOCKETS += 1
 
 	def makeGoodPacket(self):
 		ICMP_ECHO_REQUEST = 8
@@ -81,14 +102,7 @@ class Pinger():
 		return answer
 
 	def ping(self, outputter):
-		while self.im_broken:
-			try:
-				self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.getprotobyname('icmp'))
-				self.socket.settimeout(self._timeout)
-				self.im_broken = 0
-			except IOError as e:
-				gevent.sleep(1)
-
+		global OPENED_SOCKETS
 		self.mine_arr = []
 		self.data.append(self.mine_arr)
 		try:
@@ -97,6 +111,7 @@ class Pinger():
 			self.mine_arr.append(time.time())
 			self.mine_arr.append("N/A")
 			self.mine_arr.append("N/A")
+			OPENED_SOCKETS -= 1
 			self.socket.close()
 			outputter.appendItemToOutputter(self.data)
 
@@ -109,16 +124,16 @@ class Pinger():
 				self.socket.send(packet)
 				self.start_time = time.time()
 			except Exception as e:
+				print("Error sending packet from ping on Pinger: \n", e)
 				pass
-				#print("Error sending packet from ping on Pinger: \n", e)
 			
 			try:
 				received_packet, addr = self.socket.recvfrom(64)
 				data = self.readPacket(received_packet)
 				self.end_time = time.time()
 			except Exception as e:
+				print("Error receiving packet from ping on Pinger: \n", e)
 				pass
-				#print("Error receiving packet from ping on Pinger: \n", e)
 			else:
 				self.curr_ping += 1 
 				self.total_received_packets += 1
@@ -134,6 +149,8 @@ class Pinger():
 			#print("rtt:", self.total_time/self._number_of_pings)
 			self.mine_arr.append((self.total_time/self._number_of_pings) * 1000)
 	
+		OPENED_SOCKETS -= 1
+
 		self.socket.close()
 
 		outputter.appendItemToOutputter(self.data)
@@ -164,8 +181,12 @@ class Resolver():
 		return hostname	
 
 	def resolveDomainName(self, hostname, array_with_data, appendHere):
+		global CURRENT_OPENED_HOST
 
 		hostname = self.normalizeInputForHostname(hostname)
+
+		while not SHOULD_ACCEPT_MORE_HOSTS:
+			gevent.sleep(2)
 
 		try:
 			ips = socket.gethostbyname_ex(hostname)[2]
@@ -176,6 +197,9 @@ class Resolver():
 
 		if DEBUG:
 			print(hostname, "resolved to", ips)
+
+		while not SHOULD_ACCEPT_MORE_HOSTS:
+			gevent.sleep(2)
 		
 		for ip in ips:
 			temporary_item = []
@@ -189,8 +213,11 @@ class Resolver():
 			appendHere.append(temporary_item)
 			self.callDummyPing(temporary_item)
 			self.iterations += 1
-			if not (self.iterations % 10):
-				print(self.iterations)
+			CURRENT_OPENED_HOST += 1
+
+			#print(self.iterations)
+			# if not (self.iterations % 10):
+			# 	print(self.iterations)
 
 	def callDummyPing(self, item):
 		pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
@@ -343,6 +370,10 @@ class Outputter():
 def main():
 	all_threads_2 = []
 
+	stater = Statistics()
+	mark = gevent.spawn(stater.printData)
+
+
 	data_giver = DataGiver()
 	outputter = Outputter(versionNumber = versionNumber, applicationName = applicationName)
 	resolver = Resolver(all_threads_2, outputter)
@@ -353,6 +384,6 @@ def main():
 	gevent.joinall(all_threads_2)
 
 
-	#print(outputter.getResult(outputFormat=args.output))
+	print(outputter.getResult(outputFormat=args.output))
 
 main()
