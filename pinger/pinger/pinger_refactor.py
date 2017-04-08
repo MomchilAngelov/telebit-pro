@@ -5,7 +5,7 @@ import gevent
 
 from dicttoxml import dicttoxml
 
-import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct
+import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct, os
 from gevent import socket, Timeout 
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
@@ -28,25 +28,24 @@ ICMP_CONSTANT = socket.getprotobyname('icmp')
 OPENED_SOCKETS = 0
 CURRENT_OPENED_HOST = 0
 SHOULD_ACCEPT_MORE_HOSTS = 1
+OPENED_GREENLETS = 0
+MAX_OPENED_GREENLETS = 2000
+MAX_OPENED_SOCKETS = 300
 
 class Statistics():
 
 	def printData(self):
 		while 1:
-			global SHOULD_ACCEPT_MORE_HOSTS
+			
 			if STATS:
-				print("Opened sockets: {0}| Current host number: {1}".format(OPENED_SOCKETS, CURRENT_OPENED_HOST))
-			if OPENED_SOCKETS > 500:
-				SHOULD_ACCEPT_MORE_HOSTS = 0
-			if OPENED_SOCKETS < 200: 
-				SHOULD_ACCEPT_MORE_HOSTS = 1
-			gevent.sleep(2)
+				print("Opened sockets: {0}| Current host number: {1} Opened greenlets: {2}".format(OPENED_SOCKETS, CURRENT_OPENED_HOST, OPENED_GREENLETS))
+			
+			gevent.sleep(1)
 
 class Pinger():
 
 	def __init__(self, data, _id, _number_of_pings, _timeout, ip):
 		global OPENED_SOCKETS
-		global SHOULD_ACCEPT_MORE_HOSTS
 		self.im_broken = 0
 		self.data = data
 		self._id = _id
@@ -103,6 +102,15 @@ class Pinger():
 
 	def ping(self, outputter):
 		global OPENED_SOCKETS
+		global OPENED_GREENLETS
+		global SHOULD_ACCEPT_MORE_HOSTS
+
+		if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
+			SHOULD_ACCEPT_MORE_HOSTS = 0
+		if OPENED_SOCKETS < 100: 
+			SHOULD_ACCEPT_MORE_HOSTS = 1
+
+
 		self.mine_arr = []
 		self.data.append(self.mine_arr)
 		try:
@@ -124,7 +132,7 @@ class Pinger():
 				self.socket.send(packet)
 				self.start_time = time.time()
 			except Exception as e:
-				#print("Error sending packet from ping on Pinger: \n", e)
+				#print("Error sending packet to {0} on Pinger: \n".format(self.ip), e)
 				pass
 			
 			try:
@@ -132,7 +140,7 @@ class Pinger():
 				data = self.readPacket(received_packet)
 				self.end_time = time.time()
 			except Exception as e:
-				#print("Error receiving packet from ping on Pinger: \n", e)
+				#print("Error receiving packet from {0} on Pinger: \n".format(self.ip), e)
 				pass
 			else:
 				self.curr_ping += 1 
@@ -149,11 +157,12 @@ class Pinger():
 			#print("rtt:", self.total_time/self._number_of_pings)
 			self.mine_arr.append((self.total_time/self._number_of_pings) * 1000)
 	
-		OPENED_SOCKETS -= 1
 
 		self.socket.close()
+		OPENED_SOCKETS -= 1
 
 		outputter.appendItemToOutputter(self.data)
+		OPENED_GREENLETS -= 1
 
 
 class Resolver():
@@ -182,6 +191,7 @@ class Resolver():
 
 	def resolveDomainName(self, hostname, array_with_data, appendHere):
 		global CURRENT_OPENED_HOST
+		global OPENED_GREENLETS
 
 		hostname = self.normalizeInputForHostname(hostname)
 
@@ -214,6 +224,7 @@ class Resolver():
 			self.callDummyPing(temporary_item)
 			self.iterations += 1
 			CURRENT_OPENED_HOST += 1
+			OPENED_GREENLETS -= 1
 
 			#print(self.iterations)
 			# if not (self.iterations % 10):
@@ -223,12 +234,16 @@ class Resolver():
 		pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
 		while not pinger:
 			pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
-
+		
+		global OPENED_GREENLETS
 		self.threads.append(gevent.spawn(pinger.ping, self.outputter))
+		OPENED_GREENLETS += 1
+
 
 class DataGiver():
 
-	def __init__(self):
+	def __init__(self, threads):
+		self.threads = threads
 		self.domain_to_ips_list = []
 
 	def getDataFromFile(self, file, resolver):
@@ -267,13 +282,20 @@ class DataGiver():
 					valueIdx['idx'] = idx
 					self.domain_to_ips_list.append(valueIdx)
 					
-		if len(self.domain_to_ips_list) > 0:
-			array_of_resolvers = [gevent.spawn(resolver.resolveDomainName, should_be_resolved["address"], should_be_resolved, tmp_arr)
-				for should_be_resolved in self.domain_to_ips_list	
-			]
+		if len(self.domain_to_ips_list):
+			global OPENED_GREENLETS
+			for should_be_resolved in self.domain_to_ips_list:
 
-			gevent.joinall(array_of_resolvers)
-		
+				while OPENED_GREENLETS > MAX_OPENED_GREENLETS:
+					gevent.sleep(2)
+
+				self.threads.append(gevent.spawn(resolver.resolveDomainName, should_be_resolved["address"], should_be_resolved, tmp_arr))
+				OPENED_GREENLETS += 1
+
+			gevent.joinall(self.threads)
+			print("Here 1")
+
+
 		if DEBUG:
 			print(tmp_arr)
 
@@ -368,22 +390,22 @@ class Outputter():
 
 
 def main():
+	global OPENED_GREENLETS
+
 	all_threads_2 = []
 
 	stater = Statistics()
 	mark = gevent.spawn(stater.printData)
+	OPENED_GREENLETS += 1
 
-
-	data_giver = DataGiver()
+	data_giver = DataGiver(threads = all_threads_2)
 	outputter = Outputter(versionNumber = versionNumber, applicationName = applicationName)
 	resolver = Resolver(all_threads_2, outputter)
 
-	host_to_data = data_giver.getDataFromFile(args.configure or defaultSearchFolder, resolver = resolver)
+	data = gevent.spawn(data_giver.getDataFromFile, args.configure or defaultSearchFolder, resolver)
+	data.join()
 
-
-	gevent.joinall(all_threads_2)
-
-
+	OPENED_GREENLETS -= 1
 	print(outputter.getResult(outputFormat=args.output))
 
 main()
