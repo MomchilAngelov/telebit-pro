@@ -13,6 +13,8 @@ parser.add_argument("-o", "--output", help="Output format", type = str, choices=
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
 parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
 parser.add_argument("-s", "--stats", help="Give some statistics on the screen!", action = "store_true", default = False)
+parser.add_argument("-d", "--directory", help="Put the output in written directory. WIll be created if not there.", type = str, default = False)
+
 args = parser.parse_args()
 
 DEBUG = args.verbose 
@@ -20,26 +22,35 @@ STATS = args.stats
 
 versionNumber = "3.0"
 applicationName = "Momo's Pinger"
+
 defaultSearchFolder = "test_Data/input.json"
+defaultOutputFolder = "output_data"
+
+searchFolder = args.configure or defaultSearchFolder
+outputFolder = args.directory or defaultOutputFolder
 
 #socket.getprotobyname отваря файла на OS-то в /etc/protocols, 
-	#и мисля че го загнездва там, и ми дава no protocol error като станат повече от 1200 greenlet-а, затова го изнасям
+#и мисля че го загнездва там, и ми дава no protocol error като станат повече от 1200 greenlet-а, затова го изнасям
 ICMP_CONSTANT = socket.getprotobyname('icmp')
+
 OPENED_SOCKETS = 0
-CURRENT_OPENED_HOST = 0
+OPENED_HOSTS = 0
+CURRENT_HOST = 0
+CURRENT_IN_GETHOSTBYNAME_EX = 0
+
 SHOULD_ACCEPT_MORE_HOSTS = 1
-OPENED_GREENLETS = 0
-MAX_OPENED_GREENLETS = 2000
-MAX_OPENED_SOCKETS = 300
+
+MAX_OPENED_SOCKETS = 300 #so far unused
+OPENED_HOSTS_MAX = 300
+OPENED_HOST_MAX_RETURN = 100
 
 class Statistics():
 
 	def printData(self):
 		while 1:
-			
 			if STATS:
-				print("Opened sockets: {0}| Current host number: {1} Opened greenlets: {2}".format(OPENED_SOCKETS, CURRENT_OPENED_HOST, OPENED_GREENLETS))
-			
+				print("Opened sockets: {0}| Current unresolved hosts: {1}| Currently Resolved Hosts: {4}|Host number: {2}|Greenlets that try to resolve their domain: {3}"
+					.format(OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, OPENED_HOSTS - OPENED_HOSTS))
 			gevent.sleep(1)
 
 class Pinger():
@@ -54,10 +65,10 @@ class Pinger():
 		self.curr_ping = 0
 		self.ip = ip
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
+		OPENED_SOCKETS += 1
 		self.socket.settimeout(self._timeout)
 		self.total_time = 0
 		self.total_received_packets = 0
-		OPENED_SOCKETS += 1
 
 	def makeGoodPacket(self):
 		ICMP_ECHO_REQUEST = 8
@@ -102,14 +113,8 @@ class Pinger():
 
 	def ping(self, outputter):
 		global OPENED_SOCKETS
-		global OPENED_GREENLETS
 		global SHOULD_ACCEPT_MORE_HOSTS
-
-		if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
-			SHOULD_ACCEPT_MORE_HOSTS = 0
-		if OPENED_SOCKETS < 100: 
-			SHOULD_ACCEPT_MORE_HOSTS = 1
-
+		global OPENED_HOSTS
 
 		self.mine_arr = []
 		self.data.append(self.mine_arr)
@@ -160,16 +165,15 @@ class Pinger():
 
 		self.socket.close()
 		OPENED_SOCKETS -= 1
+		OPENED_HOSTS -= 1
 
 		outputter.appendItemToOutputter(self.data)
-		OPENED_GREENLETS -= 1
-
 
 class Resolver():
 
-	def __init__(self, threads, outputter):
+	def __init__(self, outputter):
 		self.iterations = 0
-		self.threads = threads
+		self.threads = []
 		self.outputter = outputter
 
 	def isGoodIPv4(self, s):
@@ -190,27 +194,39 @@ class Resolver():
 		return hostname	
 
 	def resolveDomainName(self, hostname, array_with_data, appendHere):
-		global CURRENT_OPENED_HOST
-		global OPENED_GREENLETS
+		global OPENED_HOSTS
+		global SHOULD_ACCEPT_MORE_HOSTS
+		global CURRENT_HOST
+		global CURRENT_IN_GETHOSTBYNAME_EX
 
 		hostname = self.normalizeInputForHostname(hostname)
+		
+		if OPENED_HOSTS > OPENED_HOSTS_MAX:
+			SHOULD_ACCEPT_MORE_HOSTS = 0
+		if OPENED_HOSTS < OPENED_HOST_MAX_RETURN:
+			SHOULD_ACCEPT_MORE_HOSTS = 1
 
 		while not SHOULD_ACCEPT_MORE_HOSTS:
 			gevent.sleep(2)
 
 		try:
+			CURRENT_IN_GETHOSTBYNAME_EX += 1
+			#We get here almost immediatly, because there is no blocking available
+			#This blocks for a bit al the threads, and the code below makes it so not all of them go out, but they still
+			#Are here and try to get their host_by_name fixed
 			ips = socket.gethostbyname_ex(hostname)[2]
 		except Exception as e:
-			if DEBUG:
-				print("Had problem resolving", hostname)
 			ips=[hostname]
 
-		if DEBUG:
-			print(hostname, "resolved to", ips)
+		CURRENT_IN_GETHOSTBYNAME_EX -= 1
+		if OPENED_HOSTS > OPENED_HOSTS_MAX:
+			SHOULD_ACCEPT_MORE_HOSTS = 0
+		if OPENED_HOSTS < OPENED_HOST_MAX_RETURN:
+			SHOULD_ACCEPT_MORE_HOSTS = 1
 
 		while not SHOULD_ACCEPT_MORE_HOSTS:
 			gevent.sleep(2)
-		
+
 		for ip in ips:
 			temporary_item = []
 			temporary_item.append(ip)
@@ -220,36 +236,26 @@ class Resolver():
 			temporary_item.append(array_with_data["application_name"])
 			temporary_item.append(array_with_data['application_name_human_name'])
 			
+			CURRENT_HOST += 1
+			OPENED_HOSTS += 1
 			appendHere.append(temporary_item)
 			self.callDummyPing(temporary_item)
 			self.iterations += 1
-			CURRENT_OPENED_HOST += 1
-			OPENED_GREENLETS -= 1
 
-			#print(self.iterations)
-			# if not (self.iterations % 10):
-			# 	print(self.iterations)
+		gevent.joinall(self.threads)
 
 	def callDummyPing(self, item):
 		pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
-		while not pinger:
-			pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
-		
-		global OPENED_GREENLETS
 		self.threads.append(gevent.spawn(pinger.ping, self.outputter))
-		OPENED_GREENLETS += 1
 
 
 class DataGiver():
 
-	def __init__(self, threads):
-		self.threads = threads
+	def __init__(self):
+		self.threads = []
 		self.domain_to_ips_list = []
 
 	def getDataFromFile(self, file, resolver):
-		if DEBUG:
-			print("Getting data from {0}".format(file))
-
 		tmp_arr = []
 
 		files_matching_pattern = glob.glob(file)
@@ -263,8 +269,6 @@ class DataGiver():
 				sys.exit()
 
 		for application_name in input_json["applications"]:
-			if DEBUG:
-				print("Parsing for application...", application_name)
 		
 			for idx, valueIdx in input_json["applications"][application_name]["items"].items():
 				temporary_item = []
@@ -283,21 +287,10 @@ class DataGiver():
 					self.domain_to_ips_list.append(valueIdx)
 					
 		if len(self.domain_to_ips_list):
-			global OPENED_GREENLETS
 			for should_be_resolved in self.domain_to_ips_list:
-
-				while OPENED_GREENLETS > MAX_OPENED_GREENLETS:
-					gevent.sleep(2)
-
 				self.threads.append(gevent.spawn(resolver.resolveDomainName, should_be_resolved["address"], should_be_resolved, tmp_arr))
-				OPENED_GREENLETS += 1
 
 			gevent.joinall(self.threads)
-			print("Here 1")
-
-
-		if DEBUG:
-			print(tmp_arr)
 
 		return tmp_arr
 
@@ -348,7 +341,6 @@ class Outputter():
 		self.outputDictionary["applications"][data]["items"] = {}
 
 	def appendItemToOutputter(self, output):
-		#print(output)
 		rtt = output[6].pop()
 		packet_loss = output[6].pop()
 		timestamp = output[6].pop()
@@ -390,22 +382,25 @@ class Outputter():
 
 
 def main():
-	global OPENED_GREENLETS
+	if STATS:
+		stater = Statistics()
+		mark = gevent.spawn(stater.printData)
 
-	all_threads_2 = []
-
-	stater = Statistics()
-	mark = gevent.spawn(stater.printData)
-	OPENED_GREENLETS += 1
-
-	data_giver = DataGiver(threads = all_threads_2)
+	data_giver = DataGiver()
 	outputter = Outputter(versionNumber = versionNumber, applicationName = applicationName)
-	resolver = Resolver(all_threads_2, outputter)
+	resolver = Resolver(outputter = outputter)
 
-	data = gevent.spawn(data_giver.getDataFromFile, args.configure or defaultSearchFolder, resolver)
+	data = gevent.spawn(data_giver.getDataFromFile, searchFolder, resolver)
 	data.join()
 
-	OPENED_GREENLETS -= 1
-	print(outputter.getResult(outputFormat=args.output))
+	if STATS:
+		if not os.path.exists(outputFolder):
+			os.makedirs(outputFolder)	
+		
+		with open("{3}/{0}-{1}-output.{2}".format(time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime()),
+			applicationName, args.output, outputFolder), "w") as f:
+			f.write(outputter.getResult(outputFormat=args.output))
+	else:
+		print(outputter.getResult(outputFormat=args.output))
 
 main()
