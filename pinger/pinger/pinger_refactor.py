@@ -10,6 +10,7 @@ from gevent import socket, Timeout
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
+parser.add_argument("-p", "--protocol", help="Protocol used", type = str, choices=["icmp", "http"], default="icmp")
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
 parser.add_argument("-v", "--verbose", help="Give the script more verbosity, make it yell!", action = "store_true", default = False)
 parser.add_argument("-s", "--stats", help="Give some statistics on the screen!", action = "store_true", default = False)
@@ -37,53 +38,102 @@ OPENED_SOCKETS = 0
 OPENED_HOSTS = 0
 CURRENT_HOST = 0
 CURRENT_IN_GETHOSTBYNAME_EX = 0
+CURRENT_TRY_TO_BE_OPENED_SOCKETS = 0
 
 SHOULD_ACCEPT_MORE_HOSTS = 1
+SHOULD_ACCEPT_MORE_SOCKETS = 1
 
-MAX_OPENED_SOCKETS = 300 #so far unused
-OPENED_HOSTS_MAX = 300
+MAX_OPENED_SOCKETS = 500
+MAX_OPENED_SOCKETS_RETURN = 100
+OPENED_HOSTS_MAX = 1000
 OPENED_HOST_MAX_RETURN = 100
+
+def should_block():
+	global SHOULD_ACCEPT_MORE_HOSTS
+
+	if CURRENT_IN_GETHOSTBYNAME_EX > OPENED_HOSTS_MAX:
+			SHOULD_ACCEPT_MORE_HOSTS = 0
+	if CURRENT_IN_GETHOSTBYNAME_EX < OPENED_HOST_MAX_RETURN:
+		SHOULD_ACCEPT_MORE_HOSTS = 1
+
+	while not SHOULD_ACCEPT_MORE_HOSTS:
+		gevent.sleep(2)
+		if CURRENT_IN_GETHOSTBYNAME_EX > OPENED_HOSTS_MAX:
+			SHOULD_ACCEPT_MORE_HOSTS = 0
+		if CURRENT_IN_GETHOSTBYNAME_EX < OPENED_HOST_MAX_RETURN:
+			SHOULD_ACCEPT_MORE_HOSTS = 1
+
+def should_block_sockets():
+	global SHOULD_ACCEPT_MORE_SOCKETS
+	global CURRENT_TRY_TO_BE_OPENED_SOCKETS
+	CURRENT_TRY_TO_BE_OPENED_SOCKETS += 1
+
+	if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
+			SHOULD_ACCEPT_MORE_SOCKETS = 0
+	if OPENED_SOCKETS < MAX_OPENED_SOCKETS_RETURN:
+		SHOULD_ACCEPT_MORE_SOCKETS = 1
+
+	while not SHOULD_ACCEPT_MORE_SOCKETS:
+		gevent.sleep(2)
+		if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
+			SHOULD_ACCEPT_MORE_SOCKETS = 0
+		if OPENED_SOCKETS < MAX_OPENED_SOCKETS_RETURN:
+			SHOULD_ACCEPT_MORE_SOCKETS = 1
+
+	CURRENT_TRY_TO_BE_OPENED_SOCKETS -= 1
 
 class Statistics():
 
 	def printData(self):
 		while 1:
 			if STATS:
-				print("Opened sockets: {0}| Current unresolved hosts: {1}| Currently Resolved Hosts: {4}|Host number: {2}|Greenlets that try to resolve their domain: {3}"
-					.format(OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, OPENED_HOSTS - OPENED_HOSTS))
+				print("Opened sockets: {0}|Sockets That want to be opened: {5}| Current unresolved hosts: {1}| Currently Resolved Hosts: {4}|Host number: {2}|Greenlets that try to resolve their domain: {3}"
+					.format(OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS, CURRENT_TRY_TO_BE_OPENED_SOCKETS))
 			gevent.sleep(1)
 
-class Pinger():
+
+class HtmlPinger():
 
 	def __init__(self, data, _id, _number_of_pings, _timeout, ip):
 		global OPENED_SOCKETS
-		self.im_broken = 0
 		self.data = data
 		self._id = _id
 		self._number_of_pings = _number_of_pings
 		self._timeout = _timeout
 		self.curr_ping = 0
 		self.ip = ip
-		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
+		should_block_sockets()
 		OPENED_SOCKETS += 1
+		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
+		self.socket.settimeout(self._timeout)
+		self.total_time = 0
+		self.total_received_packets = 0
+
+
+class Pinger():
+
+	def __init__(self, data, _id, _number_of_pings, _timeout, ip):
+		global OPENED_SOCKETS
+		self.data = data
+		self._id = _id
+		self._number_of_pings = _number_of_pings
+		self._timeout = _timeout
+		self.curr_ping = 0
+		self.ip = ip
+		should_block_sockets()
+		OPENED_SOCKETS += 1
+		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
 		self.socket.settimeout(self._timeout)
 		self.total_time = 0
 		self.total_received_packets = 0
 
 	def makeGoodPacket(self):
-		ICMP_ECHO_REQUEST = 8
-		fullPacketSize = 64
-		sizeOfSentPacket = fullPacketSize
-		sizeOfSentPacket -= 8
-		checkSum = 0
+		ICMP_ECHO_REQUEST = 8; fullPacketSize = 64; sizeOfSentPacket = fullPacketSize; sizeOfSentPacket -= 8; checkSum = 0;
 		my_bytes = struct.calcsize("d")
 		header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, checkSum, self._id, 1)
-
 		data = (fullPacketSize - my_bytes) * "Q"
 		data = struct.pack("d", time.time()) + bytes(data, "utf-8")
-
 		checkSum = self.checksum(header + data)
-
 		header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, socket.htons(checkSum), self._id, 1)
 		packet = header + data
 
@@ -93,7 +143,6 @@ class Pinger():
 		icmpHeader = packet[20:28]
 		type, code, checksum, data, sequence = struct.unpack("bbHHh", icmpHeader)
 		return data
-
 
 	def checksum(self, source_string):
 		my_sum = 0
@@ -113,7 +162,6 @@ class Pinger():
 
 	def ping(self, outputter):
 		global OPENED_SOCKETS
-		global SHOULD_ACCEPT_MORE_HOSTS
 		global OPENED_HOSTS
 
 		self.mine_arr = []
@@ -169,6 +217,7 @@ class Pinger():
 
 		outputter.appendItemToOutputter(self.data)
 
+
 class Resolver():
 
 	def __init__(self, outputter):
@@ -201,16 +250,12 @@ class Resolver():
 
 		hostname = self.normalizeInputForHostname(hostname)
 		
-		if OPENED_HOSTS > OPENED_HOSTS_MAX:
-			SHOULD_ACCEPT_MORE_HOSTS = 0
-		if OPENED_HOSTS < OPENED_HOST_MAX_RETURN:
-			SHOULD_ACCEPT_MORE_HOSTS = 1
 
-		while not SHOULD_ACCEPT_MORE_HOSTS:
-			gevent.sleep(2)
+		should_block()
+		CURRENT_IN_GETHOSTBYNAME_EX += 1
+
 
 		try:
-			CURRENT_IN_GETHOSTBYNAME_EX += 1
 			#We get here almost immediatly, because there is no blocking available
 			#This blocks for a bit al the threads, and the code below makes it so not all of them go out, but they still
 			#Are here and try to get their host_by_name fixed
@@ -219,13 +264,6 @@ class Resolver():
 			ips=[hostname]
 
 		CURRENT_IN_GETHOSTBYNAME_EX -= 1
-		if OPENED_HOSTS > OPENED_HOSTS_MAX:
-			SHOULD_ACCEPT_MORE_HOSTS = 0
-		if OPENED_HOSTS < OPENED_HOST_MAX_RETURN:
-			SHOULD_ACCEPT_MORE_HOSTS = 1
-
-		while not SHOULD_ACCEPT_MORE_HOSTS:
-			gevent.sleep(2)
 
 		for ip in ips:
 			temporary_item = []
@@ -239,7 +277,11 @@ class Resolver():
 			CURRENT_HOST += 1
 			OPENED_HOSTS += 1
 			appendHere.append(temporary_item)
-			self.callDummyPing(temporary_item)
+			if args.protocol == "icmp":
+				self.callDummyPing(temporary_item)
+			else:
+				self.callDummyHttp(temporary_item)
+
 			self.iterations += 1
 
 		gevent.joinall(self.threads)
@@ -248,6 +290,8 @@ class Resolver():
 		pinger = Pinger(data = item, _id = len(item), _number_of_pings = item[1], _timeout = item[2], ip = item[0])
 		self.threads.append(gevent.spawn(pinger.ping, self.outputter))
 
+	def callDummyHttp(self, item):
+		raise NotImplementedError
 
 class DataGiver():
 
@@ -378,6 +422,7 @@ class Outputter():
 		return xml.dom.minidom.parseString(str(dicttoxml(self.outputDictionary, custom_root='root', attr_type=False), "utf-8")).toprettyxml()
 
 	def getResult(self, outputFormat):
+		print("Number of resolved hosts:", CURRENT_HOST)
 		return eval("self.getResultIn"+(outputFormat.upper())+"()")
 
 

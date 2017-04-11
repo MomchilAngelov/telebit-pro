@@ -53,7 +53,7 @@ with open('test_Data/raw_domains_10k.txt') as f:
 	for idx, domainName in enumerate(f):
 		arr[str(idx)] = {
 			"packet_interval": 0.2,
-			"packets_count": 5,
+			"packets_count": 1,
 			"address": domainName.strip()
 		}
 
