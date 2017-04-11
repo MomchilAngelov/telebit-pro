@@ -1,0 +1,47 @@
+{
+    "name": "Momo's Pinger",
+    "version": "3.0",
+    "applications": {
+        "icmp_pings2": {
+            "name": "IMCP2 pings",
+            "items": {
+                "swagercheto.com.packet_loss": {
+                    "units": "%",
+                    "name": "[swagercheto.com -> swagercheto.com] ICMP ping: packet loss",
+                    "requesting_application": "IMCP2 pings",
+                    "value": "N/A",
+                    "domain": "swagercheto.com",
+                    "type": "float",
+                    "timestamp": 1491918789
+                },
+                "666.666.666.666.rtt": {
+                    "units": "ms",
+                    "name": "[666.666.666.666 -> 666.666.666.666] ICMP ping: packet round trip time",
+                    "requesting_application": "IMCP2 pings",
+                    "value": "N/A",
+                    "domain": "666.666.666.666",
+                    "type": "float",
+                    "timestamp": 1491918789
+                },
+                "666.666.666.666.packet_loss": {
+                    "units": "%",
+                    "name": "[666.666.666.666 -> 666.666.666.666] ICMP ping: packet loss",
+                    "requesting_application": "IMCP2 pings",
+                    "value": "N/A",
+                    "domain": "666.666.666.666",
+                    "type": "float",
+                    "timestamp": 1491918789
+                },
+                "swagercheto.com.rtt": {
+                    "units": "ms",
+                    "name": "[swagercheto.com -> swagercheto.com] ICMP ping: packet round trip time",
+                    "requesting_application": "IMCP2 pings",
+                    "value": "N/A",
+                    "domain": "swagercheto.com",
+                    "type": "float",
+                    "timestamp": 1491918789
+                }
+            }
+        }
+    }
+}

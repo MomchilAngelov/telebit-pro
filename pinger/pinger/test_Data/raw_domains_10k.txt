@@ -1,4 +1,5 @@
 google.com
+api.github.com/user
 facebook.com
 doubleclick.net
 google-analytics.com

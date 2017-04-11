@@ -46,14 +46,14 @@ dict_to_json['applications']['icmp_pings3'] = {}
 dict_to_json['applications']['icmp_pings3']['name'] = "IMCP3 pings"
 dict_to_json['applications']['icmp_pings3']['items'] = {}
 
-domain_count = 200
+domain_count = 3000
 
 arr = dict_to_json['applications']['icmp_pings3']['items']
 with open('test_Data/raw_domains_10k.txt') as f:
 	for idx, domainName in enumerate(f):
 		arr[str(idx)] = {
 			"packet_interval": 0.2,
-			"packets_count": 1,
+			"packets_count": 5,
 			"address": domainName.strip()
 		}
 

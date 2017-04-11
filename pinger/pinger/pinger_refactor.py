@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-import gevent
-
-
 from dicttoxml import dicttoxml
 
-import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct, os
+import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct, os, requests, gevent, grequests
 from gevent import socket, Timeout 
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
@@ -33,6 +30,7 @@ outputFolder = args.directory or defaultOutputFolder
 #socket.getprotobyname отваря файла на OS-то в /etc/protocols, 
 #и мисля че го загнездва там, и ми дава no protocol error като станат повече от 1200 greenlet-а, затова го изнасям
 ICMP_CONSTANT = socket.getprotobyname('icmp')
+HTTP = args.protocol == 'http'
 
 OPENED_SOCKETS = 0
 OPENED_HOSTS = 0
@@ -44,23 +42,26 @@ SHOULD_ACCEPT_MORE_HOSTS = 1
 SHOULD_ACCEPT_MORE_SOCKETS = 1
 
 MAX_OPENED_SOCKETS = 500
-MAX_OPENED_SOCKETS_RETURN = 100
-OPENED_HOSTS_MAX = 1000
-OPENED_HOST_MAX_RETURN = 100
+OPENED_HOSTS_MAX = 800
+PROCESS_START_TIME = time.time()
+
+OPENED_HTTP_REQUESTS = 0
+
+PASSWORDS = {}
 
 def should_block():
 	global SHOULD_ACCEPT_MORE_HOSTS
 
 	if CURRENT_IN_GETHOSTBYNAME_EX > OPENED_HOSTS_MAX:
 			SHOULD_ACCEPT_MORE_HOSTS = 0
-	if CURRENT_IN_GETHOSTBYNAME_EX < OPENED_HOST_MAX_RETURN:
+	if CURRENT_IN_GETHOSTBYNAME_EX < OPENED_HOSTS_MAX:
 		SHOULD_ACCEPT_MORE_HOSTS = 1
 
 	while not SHOULD_ACCEPT_MORE_HOSTS:
 		gevent.sleep(2)
 		if CURRENT_IN_GETHOSTBYNAME_EX > OPENED_HOSTS_MAX:
 			SHOULD_ACCEPT_MORE_HOSTS = 0
-		if CURRENT_IN_GETHOSTBYNAME_EX < OPENED_HOST_MAX_RETURN:
+		if CURRENT_IN_GETHOSTBYNAME_EX < OPENED_HOSTS_MAX:
 			SHOULD_ACCEPT_MORE_HOSTS = 1
 
 def should_block_sockets():
@@ -70,14 +71,14 @@ def should_block_sockets():
 
 	if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 0
-	if OPENED_SOCKETS < MAX_OPENED_SOCKETS_RETURN:
+	if OPENED_SOCKETS < MAX_OPENED_SOCKETS:
 		SHOULD_ACCEPT_MORE_SOCKETS = 1
 
 	while not SHOULD_ACCEPT_MORE_SOCKETS:
 		gevent.sleep(2)
 		if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 0
-		if OPENED_SOCKETS < MAX_OPENED_SOCKETS_RETURN:
+		if OPENED_SOCKETS < MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 1
 
 	CURRENT_TRY_TO_BE_OPENED_SOCKETS -= 1
@@ -85,29 +86,120 @@ def should_block_sockets():
 class Statistics():
 
 	def printData(self):
-		while 1:
-			if STATS:
-				print("Opened sockets: {0}|Sockets That want to be opened: {5}| Current unresolved hosts: {1}| Currently Resolved Hosts: {4}|Host number: {2}|Greenlets that try to resolve their domain: {3}"
-					.format(OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS, CURRENT_TRY_TO_BE_OPENED_SOCKETS))
-			gevent.sleep(1)
+		
+		if HTTP:
+			while 1:
+				
+				print("OPENED_HTTP_REQUESTS: {0}".format(OPENED_HTTP_REQUESTS))
+				gevent.sleep(1)
+
+		else:
+			import resource
+			
+			last_time = 0
+			last_sum_of_cpu_usage = 0
+
+			while 1:
+				print("Opened sockets: {0}|Sockets That want to be opened: {1}| Current unresolved hosts: {2}| Currently Resolved Hosts: {5}|Host number: {3}|Greenlets that try to resolve their domain: {4}"
+					.format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+				
+				resource_giver = resource.getrusage(resource.RUSAGE_SELF)
+				
+				print("Max ram Usage: {0}MB".format(resource_giver.ru_maxrss/1024), end=" ")
+				sum_of_cpu_usage = resource_giver.ru_utime + resource_giver.ru_stime
+				time_now = time.time()
+				time_since_start = time_now - PROCESS_START_TIME
+
+				print("Average CPU time: {0}%".format((sum_of_cpu_usage / time_since_start) * 100), end=" ")
+				print("Current CPU time: {0}%".format((sum_of_cpu_usage - last_sum_of_cpu_usage) / (time_now - last_time) * 100))
+
+				last_time = time.time()
+				last_sum_of_cpu_usage = sum_of_cpu_usage
+
+				gevent.sleep(1)
 
 
 class HtmlPinger():
 
-	def __init__(self, data, _id, _number_of_pings, _timeout, ip):
-		global OPENED_SOCKETS
-		self.data = data
-		self._id = _id
-		self._number_of_pings = _number_of_pings
-		self._timeout = _timeout
-		self.curr_ping = 0
-		self.ip = ip
-		should_block_sockets()
-		OPENED_SOCKETS += 1
-		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
-		self.socket.settimeout(self._timeout)
-		self.total_time = 0
-		self.total_received_packets = 0
+	def __init__(self, item):
+		self.address = item['address']
+		self.request_count = item['request_count']
+		self.request_interval = item['request_interval']
+		self.idx = item['idx']
+		self.application_name_human_name = item.get('application_name_human_name', None)
+		self.application_name = item.get('application_name', None)
+		
+		self.expected_response_code = item.get('expected_response_code', None)
+		self.expected_headers = item.get('expected_headers', None)
+
+		self.normalizeInput()
+
+	def normalizeInput(self):
+		if 'http' not in self.address:
+			self.address = 'http://' + self.address
+
+	def getAuthorizationForAddress(self, address):
+		global PASSWORDS
+		
+		if not PASSWORDS:
+			PASSWORDS = {line.split("|")[0]: {"name": line.split("|")[1], "password": line.split("|")[2] } for line in open('passwords.txt')}
+
+		if address in PASSWORDS:
+			return (PASSWORDS[address]['name'], PASSWORDS[address]['password'])
+
+		return None
+
+	def ping(self, outputter):
+		global OPENED_HTTP_REQUESTS
+
+		self.data = {}
+		self.data['timestamp'] = int(time.time())
+		self.data['type'] = 'boolean'
+		self.data['address'] = self.address
+		self.data['units'] = None
+		self.data['application_name_human_name'] = self.application_name_human_name
+		self.data['application_name'] = self.application_name
+		self.credentials = None
+
+		OPENED_HTTP_REQUESTS += 1
+		for k in range(self.request_count):
+
+			try:
+				r = requests.head(self.address, auth = self.credentials, allow_redirects = True, timeout = 1)
+			except Exception as e:
+				continue
+			#Check for 401 and if my guy is there :)
+			if r.status_code == 401 and not self.credentials:
+				self.credentials = self.getAuthorizationForAddress(r.url) or self.getAuthorizationForAddress(self.address)
+				if self.credentials:
+					continue
+
+			if self.expected_response_code:
+				if r.status_code in self.expected_response_code:
+					self.data['value'] = 1
+				else:
+					self.data['value'] = 0
+					break
+			else:
+				self.data['value'] = 1
+
+
+			# if self.expected_headers:
+			# 	self.expected_headers = set(self.expected_headers)
+			# 	if self.expected_headers.issubset(set(r.headers)):
+			# 		self.data['expected_headers'] = 1
+			# 	else: 
+			# 		self.data['expected_headers'] = 0
+			# else:
+			# 	self.data['expected_headers'] = 1
+
+
+		OPENED_HTTP_REQUESTS -= 1
+		#If all the requests hit a timeout
+		if not 'value' in self.data:
+			self.data['value'] = 2
+
+		outputter.appendItemToOutputterHTML(self.data)
 
 
 class Pinger():
@@ -217,6 +309,69 @@ class Pinger():
 
 		outputter.appendItemToOutputter(self.data)
 
+class Outputter():
+
+	def __init__(self, versionNumber, applicationName):
+		self.outputDictionary = {}
+		self.outputDictionary["version"] = versionNumber
+		self.outputDictionary["name"] = applicationName
+		self.outputDictionary["applications"] = {}
+
+	def createRootForApplications(self, data, name):
+		self.outputDictionary["applications"][data] = {}
+		self.outputDictionary["applications"][data]["name"] = name
+		self.outputDictionary["applications"][data]["items"] = {}
+
+	def appendItemToOutputter(self, output):
+		rtt = output[6].pop()
+		packet_loss = output[6].pop()
+		timestamp = output[6].pop()
+
+		try:
+			items = self.outputDictionary["applications"][output[4]]["items"]
+		except Exception as e:
+			self.createRootForApplications(output[4], output[5])
+			items = self.outputDictionary["applications"][output[4]]["items"]
+
+
+		items[output[0].strip()+".rtt"] = {
+			"value": rtt, 
+			"units": "ms", 
+			"name": "[{0} -> {1}] ICMP ping: packet round trip time".format(output[0].strip(), output[3]), 
+			"type": "float", 
+			"timestamp": int(timestamp), 
+			"domain": output[3], 
+			"requesting_application": output[5]
+		}
+
+		items[output[0].strip()+".packet_loss"] = {
+			"value": packet_loss,
+			"units": "%", "name": "[{0} -> {1}] ICMP ping: packet loss".format(output[0].strip(), output[3]),
+			"type": "float",
+			"timestamp": int(timestamp), 
+			"domain": output[3],
+			"requesting_application": output[5]
+		}
+
+	def appendItemToOutputterHTML(self, output):
+		try:
+			items = self.outputDictionary["applications"][output["application_name"]]["items"]
+		except Exception as e:
+			self.createRootForApplications(data = output["application_name"], name = output["application_name_human_name"])
+			items = self.outputDictionary["applications"][output["application_name"]]["items"]
+		output.pop('application_name')
+		output.pop('application_name_human_name')
+
+		items[output['address']] = output
+
+	def getResultInJSON(self):
+		return json.dumps(self.outputDictionary, ensure_ascii=False, indent = 4)
+
+	def getResultInXML(self):
+		return xml.dom.minidom.parseString(str(dicttoxml(self.outputDictionary, custom_root='root', attr_type=False), "utf-8")).toprettyxml()
+
+	def getResult(self, outputFormat):
+		return eval("self.getResultIn"+(outputFormat.upper())+"()")
 
 class Resolver():
 
@@ -277,10 +432,7 @@ class Resolver():
 			CURRENT_HOST += 1
 			OPENED_HOSTS += 1
 			appendHere.append(temporary_item)
-			if args.protocol == "icmp":
-				self.callDummyPing(temporary_item)
-			else:
-				self.callDummyHttp(temporary_item)
+			self.callDummyPing(temporary_item)
 
 			self.iterations += 1
 
@@ -291,7 +443,14 @@ class Resolver():
 		self.threads.append(gevent.spawn(pinger.ping, self.outputter))
 
 	def callDummyHttp(self, item):
-		raise NotImplementedError
+		http = HtmlPinger(item)
+		self.threads.append(gevent.spawn(http.ping, self.outputter))
+
+	def makeHTTPpings(self, items):
+		for item in items:
+			self.callDummyHttp(item)
+
+		gevent.joinall(self.threads)
 
 class DataGiver():
 
@@ -315,28 +474,19 @@ class DataGiver():
 		for application_name in input_json["applications"]:
 		
 			for idx, valueIdx in input_json["applications"][application_name]["items"].items():
-				temporary_item = []
-				if resolver.isGoodIPv4(valueIdx["address"]):
-					temporary_item.append(valueIdx["address"])
-					temporary_item.append(valueIdx["packets_count"])
-					temporary_item.append(valueIdx["packet_interval"])
-					temporary_item.append(None)
-					temporary_item.append(application_name)
-					temporary_item.append(input_json["applications"][application_name]["name"])
-					tmp_arr.append(temporary_item)
-				else:
-					valueIdx['application_name'] = application_name
-					valueIdx['application_name_human_name'] = input_json["applications"][application_name]["name"]
-					valueIdx['idx'] = idx
-					self.domain_to_ips_list.append(valueIdx)
-					
+				valueIdx['application_name'] = application_name
+				valueIdx['application_name_human_name'] = input_json["applications"][application_name]["name"]
+				valueIdx['idx'] = idx
+				self.domain_to_ips_list.append(valueIdx)
+				
 		if len(self.domain_to_ips_list):
-			for should_be_resolved in self.domain_to_ips_list:
-				self.threads.append(gevent.spawn(resolver.resolveDomainName, should_be_resolved["address"], should_be_resolved, tmp_arr))
+			if not HTTP:
+				for should_be_resolved in self.domain_to_ips_list:
+					self.threads.append(gevent.spawn(resolver.resolveDomainName, should_be_resolved["address"], should_be_resolved, tmp_arr))
 
-			gevent.joinall(self.threads)
-
-		return tmp_arr
+				gevent.joinall(self.threads)
+			else:
+				resolver.makeHTTPpings(self.domain_to_ips_list)		
 
 	def concatenateFiles(self, array_of_files):
 
@@ -369,62 +519,6 @@ class DataGiver():
 			file.close()
 			return return_json
 		return result_json
-
-
-class Outputter():
-
-	def __init__(self, versionNumber, applicationName):
-		self.outputDictionary = {}
-		self.outputDictionary["version"] = versionNumber
-		self.outputDictionary["name"] = applicationName
-		self.outputDictionary["applications"] = {}
-
-	def createRootForApplications(self, data, name):
-		self.outputDictionary["applications"][data] = {}
-		self.outputDictionary["applications"][data]["name"] = name
-		self.outputDictionary["applications"][data]["items"] = {}
-
-	def appendItemToOutputter(self, output):
-		rtt = output[6].pop()
-		packet_loss = output[6].pop()
-		timestamp = output[6].pop()
-
-		try:
-			items = self.outputDictionary["applications"][output[4]]["items"]
-		except Exception as e:
-			self.createRootForApplications(output[4], output[5])
-			items = self.outputDictionary["applications"][output[4]]["items"]
-
-
-		items[output[0].strip()+".rtt"] = {
-			"value": rtt, 
-			"units": "ms", 
-			"name": "[{0} -> {1}] ICMP ping: packet round trip time".format(output[0].strip(), output[3]), 
-			"type": "float", 
-			"timestamp": int(timestamp), 
-			"domain": output[3], 
-			"requesting_application": output[5]
-		}
-
-		items[output[0].strip()+".packet_loss"] = {
-			"value": packet_loss,
-			"units": "%", "name": "[{0} -> {1}] ICMP ping: packet loss".format(output[0].strip(), output[3]),
-			"type": "float",
-			"timestamp": int(timestamp), 
-			"domain": output[3],
-			"requesting_application": output[5]
-		}
-
-	def getResultInJSON(self):
-		return json.dumps(self.outputDictionary, ensure_ascii=False, indent = 4)
-
-	def getResultInXML(self):
-		return xml.dom.minidom.parseString(str(dicttoxml(self.outputDictionary, custom_root='root', attr_type=False), "utf-8")).toprettyxml()
-
-	def getResult(self, outputFormat):
-		print("Number of resolved hosts:", CURRENT_HOST)
-		return eval("self.getResultIn"+(outputFormat.upper())+"()")
-
 
 def main():
 	if STATS:
