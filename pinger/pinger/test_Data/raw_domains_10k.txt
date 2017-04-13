@@ -1,4 +1,4 @@
-google.com
+https://google.com
 api.github.com/user
 facebook.com
 doubleclick.net

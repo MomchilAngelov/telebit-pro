@@ -36,7 +36,7 @@ dict_to_json['applications']['html_pings3'] = {}
 dict_to_json['applications']['html_pings3']['name'] = "HTML pings"
 dict_to_json['applications']['html_pings3']['items'] = {}
 
-domain_count = 300
+domain_count = 500
 
 arr = dict_to_json['applications']['html_pings3']['items']
 with open('test_Data/raw_domains_10k.txt') as f:

@@ -27,6 +27,9 @@ defaultOutputFolder = "output_data"
 searchFolder = args.configure or defaultSearchFolder
 outputFolder = args.directory or defaultOutputFolder
 
+#https://admaym.com/ -> bad https
+#https://google.com/ -> good https
+
 #socket.getprotobyname отваря файла на OS-то в /etc/protocols, 
 #и мисля че го загнездва там, и ми дава no protocol error като станат повече от 1200 greenlet-а, затова го изнасям
 ICMP_CONSTANT = socket.getprotobyname('icmp')
@@ -37,15 +40,17 @@ OPENED_HOSTS = 0
 CURRENT_HOST = 0
 CURRENT_IN_GETHOSTBYNAME_EX = 0
 CURRENT_TRY_TO_BE_OPENED_SOCKETS = 0
+OPENED_HTTP_REQUESTS = 0
 
 SHOULD_ACCEPT_MORE_HOSTS = 1
 SHOULD_ACCEPT_MORE_SOCKETS = 1
+SHOULD_MAKE_MORE_REQUESTS = 1
 
 MAX_OPENED_SOCKETS = 500
 OPENED_HOSTS_MAX = 800
+MAX_OPENED_HTTP_REUQEST = 400
 PROCESS_START_TIME = time.time()
 
-OPENED_HTTP_REQUESTS = 0
 
 PASSWORDS = {}
 
@@ -66,22 +71,36 @@ def should_block():
 
 def should_block_sockets():
 	global SHOULD_ACCEPT_MORE_SOCKETS
-	global CURRENT_TRY_TO_BE_OPENED_SOCKETS
-	CURRENT_TRY_TO_BE_OPENED_SOCKETS += 1
 
 	if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 0
-	if OPENED_SOCKETS < MAX_OPENED_SOCKETS:
+	else:
 		SHOULD_ACCEPT_MORE_SOCKETS = 1
 
 	while not SHOULD_ACCEPT_MORE_SOCKETS:
 		gevent.sleep(2)
 		if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 0
-		if OPENED_SOCKETS < MAX_OPENED_SOCKETS:
+		else:
 			SHOULD_ACCEPT_MORE_SOCKETS = 1
 
 	CURRENT_TRY_TO_BE_OPENED_SOCKETS -= 1
+
+def should_block_http_requests():
+	global SHOULD_MAKE_MORE_REQUESTS
+	global OPENED_HTTP_REQUESTS
+
+	if OPENED_HTTP_REQUESTS > MAX_OPENED_HTTP_REUQEST:
+		SHOULD_MAKE_MORE_REQUESTS = 0
+	else:
+		SHOULD_MAKE_MORE_REQUESTS = 1
+
+	while not SHOULD_MAKE_MORE_REQUESTS:
+		gevent.sleep(2)
+		if OPENED_HTTP_REQUESTS > MAX_OPENED_HTTP_REUQEST:
+			SHOULD_MAKE_MORE_REQUESTS = 0
+		else:
+			SHOULD_MAKE_MORE_REQUESTS = 1
 
 class Statistics():
 
@@ -160,22 +179,51 @@ class HtmlPinger():
 		self.data['application_name_human_name'] = self.application_name_human_name
 		self.data['application_name'] = self.application_name
 		self.credentials = None
+		self.method_changed = False
+		self.method = 'HEAD'
 
+		should_block_http_requests()
 		OPENED_HTTP_REQUESTS += 1
+
 		for k in range(self.request_count):
 
 			try:
-				r = requests.head(self.address, auth = self.credentials, allow_redirects = True, timeout = 1)
+				r = requests.request(method = self.method, url = self.address, auth = self.credentials, allow_redirects = True, timeout = 1)
 			except Exception as e:
 				continue
 			#Check for 401 and if my guy is there :)
+
+			if r.status_code == 405 and not self.method_changed:
+				method_changed = True
+				self.method = 'GET'
+				continue
+
 			if r.status_code == 401 and not self.credentials:
 				self.credentials = self.getAuthorizationForAddress(r.url) or self.getAuthorizationForAddress(self.address)
 				if self.credentials:
 					continue
 
-			if self.expected_response_code:
+
+			if self.expected_response_code and self.expected_headers:
+			
+				self.expected_headers = set(self.expected_headers)
+				if self.expected_headers.issubset(set(r.headers)) and r.status_code in self.expected_response_code:
+					self.data['value'] = 1
+				else:
+					self.data['value'] = 0
+					break
+			
+			elif self.expected_response_code:
+			
 				if r.status_code in self.expected_response_code:
+					self.data['value'] = 1
+				else:
+					self.data['value'] = 0
+					break
+			elif self.expected_headers:
+				self.expected_headers = set(self.expected_headers)
+				
+				if self.expected_headers.issubset(set(r.headers)):
 					self.data['value'] = 1
 				else:
 					self.data['value'] = 0
@@ -183,21 +231,17 @@ class HtmlPinger():
 			else:
 				self.data['value'] = 1
 
-
-			# if self.expected_headers:
-			# 	self.expected_headers = set(self.expected_headers)
-			# 	if self.expected_headers.issubset(set(r.headers)):
-			# 		self.data['expected_headers'] = 1
-			# 	else: 
-			# 		self.data['expected_headers'] = 0
-			# else:
-			# 	self.data['expected_headers'] = 1
-
-
+			if not self.data['value'] == 1:
+				print("For: {0} we got:".format(self.address))
+				print("\t", r.status_code)
+				print("\t", r.headers)
+	
 		OPENED_HTTP_REQUESTS -= 1
 		#If all the requests hit a timeout
 		if not 'value' in self.data:
-			self.data['value'] = 2
+			self.data['value'] = 0
+
+
 
 		outputter.appendItemToOutputterHTML(self.data)
 
