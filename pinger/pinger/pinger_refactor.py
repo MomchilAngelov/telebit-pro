@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-from dicttoxml import dicttoxml
-
 import re, time, json, argparse, sys, socket, glob, tempfile, xml.dom.minidom, copy, struct, os, requests, gevent, grequests
+
+from dicttoxml import dicttoxml
 from gevent import socket, Timeout 
+
+from error_handling_library import test_hooks
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
@@ -27,11 +29,6 @@ defaultOutputFolder = "output_data"
 searchFolder = args.configure or defaultSearchFolder
 outputFolder = args.directory or defaultOutputFolder
 
-#https://admaym.com/ -> bad https
-#https://google.com/ -> good https
-
-#socket.getprotobyname отваря файла на OS-то в /etc/protocols, 
-#и мисля че го загнездва там, и ми дава no protocol error като станат повече от 1200 greenlet-а, затова го изнасям
 ICMP_CONSTANT = socket.getprotobyname('icmp')
 HTTP = args.protocol == 'http'
 
@@ -71,6 +68,7 @@ def should_block():
 
 def should_block_sockets():
 	global SHOULD_ACCEPT_MORE_SOCKETS
+	global CURRENT_TRY_TO_BE_OPENED_SOCKETS
 
 	if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 0
@@ -258,7 +256,12 @@ class Pinger():
 		self.ip = ip
 		should_block_sockets()
 		OPENED_SOCKETS += 1
-		self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
+		try:
+			self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, ICMP_CONSTANT)
+		except Exception as e:
+		 	print("Please use sudo when using the ICMP pinger...")
+		 	sys.exit(1)
+
 		self.socket.settimeout(self._timeout)
 		self.total_time = 0
 		self.total_received_packets = 0
