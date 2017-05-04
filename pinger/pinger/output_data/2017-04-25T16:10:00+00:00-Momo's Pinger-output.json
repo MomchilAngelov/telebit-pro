@@ -1,0 +1,459 @@
+{
+    "name": "Momo's Pinger",
+    "version": "3.0",
+    "applications": {
+        "html_pings3": {
+            "name": "HTML pings",
+            "items": {
+                "http://edgesuite.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://edgesuite.net"
+                },
+                "http://yahooapis.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://yahooapis.com"
+                },
+                "http://sundaysky.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://sundaysky.com"
+                },
+                "http://aspnetcdn.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://aspnetcdn.com"
+                },
+                "http://agkn.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://agkn.com"
+                },
+                "http://123bliter.com/": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://123bliter.com/"
+                },
+                "http://weather.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://weather.com"
+                },
+                "http://wikidata.org": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://wikidata.org"
+                },
+                "http://wikipedia.org": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://wikipedia.org"
+                },
+                "http://v0cdn.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://v0cdn.net"
+                },
+                "http://media.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://media.net"
+                },
+                "http://relestar.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://relestar.com"
+                },
+                "http://pingdom.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://pingdom.net"
+                },
+                "http://krxd.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://krxd.net"
+                },
+                "http://tribalfusion.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://tribalfusion.com"
+                },
+                "http://avast.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://avast.com"
+                },
+                "http://deliads.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://deliads.com"
+                },
+                "http://coull.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://coull.com"
+                },
+                "http://staticflickr.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://staticflickr.com"
+                },
+                "http://duba.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://duba.net"
+                },
+                "http://undertone.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://undertone.com"
+                },
+                "http://a.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://a.com"
+                },
+                "http://viglink.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://viglink.com"
+                },
+                "http://jollywallet.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://jollywallet.com"
+                },
+                "http://visiblemeasures.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://visiblemeasures.com"
+                },
+                "http://ooyala.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://ooyala.com"
+                },
+                "http://iponweb.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://iponweb.net"
+                },
+                "http://ytimg.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://ytimg.com"
+                },
+                "http://crwdcntrl.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://crwdcntrl.net"
+                },
+                "http://mozilla.org": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://mozilla.org"
+                },
+                "http://gemius.pl": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://gemius.pl"
+                },
+                "http://adtech.de": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://adtech.de"
+                },
+                "http://bing.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://bing.net"
+                },
+                "http://specificclick.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://specificclick.net"
+                },
+                "https://admaym.com/": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "https://admaym.com/"
+                },
+                "http://msftncsi.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://msftncsi.com"
+                },
+                "http://mxptint.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://mxptint.net"
+                },
+                "http://adcash.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://adcash.com"
+                },
+                "http://yieldmanager.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://yieldmanager.com"
+                },
+                "http://doubleclick.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://doubleclick.net"
+                },
+                "http://inmobi.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://inmobi.com"
+                },
+                "http://spotxcdn.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://spotxcdn.com"
+                },
+                "http://adobe.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://adobe.com"
+                },
+                "http://effectivemeasure.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://effectivemeasure.net"
+                },
+                "http://icio.us": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://icio.us"
+                },
+                "http://google.it": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://google.it"
+                },
+                "http://ozonemedia.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://ozonemedia.com"
+                },
+                "http://ixiaa.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://ixiaa.com"
+                },
+                "http://dtscout.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://dtscout.com"
+                },
+                "http://bing.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://bing.com"
+                },
+                "http://ebay.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://ebay.com"
+                },
+                "http://omtrdc.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://omtrdc.net"
+                },
+                "http://nanigans.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://nanigans.com"
+                },
+                "http://imrworldwide.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://imrworldwide.com"
+                },
+                "https://imgfarm.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "https://imgfarm.com"
+                },
+                "https://google.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "https://google.com"
+                },
+                "http://erne.co": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://erne.co"
+                },
+                "http://moatads.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://moatads.com"
+                },
+                "http://whatsapp.net": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://whatsapp.net"
+                },
+                "http://histats.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://histats.com"
+                },
+                "http://blogger.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://blogger.com"
+                },
+                "http://contextweb.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://contextweb.com"
+                },
+                "http://pinimg.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 1,
+                    "address": "http://pinimg.com"
+                },
+                "http://adsonar.com": {
+                    "timestamp": 1493136583,
+                    "units": null,
+                    "type": "boolean",
+                    "value": 0,
+                    "address": "http://adsonar.com"
+                }
+            }
+        }
+    }
+}

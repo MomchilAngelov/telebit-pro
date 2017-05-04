@@ -71,6 +71,7 @@ def should_block():
 
 def should_block_sockets():
 	global SHOULD_ACCEPT_MORE_SOCKETS
+	global CURRENT_TRY_TO_BE_OPENED_SOCKETS
 
 	if OPENED_SOCKETS > MAX_OPENED_SOCKETS:
 			SHOULD_ACCEPT_MORE_SOCKETS = 0
