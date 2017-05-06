@@ -7,7 +7,7 @@ from gevent import socket, Timeout
 from error_handling_library import test_hooks
 from libs.dataGiver import DataGiver
 from libs.outputDataIntoDict import Outputter
-from libs.Resolver import Resolver
+from libs.resolver import Resolver
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
@@ -177,6 +177,7 @@ def main():
 	resolver = Resolver(outputter = outputter, class_of_pinger = HtmlPinger, should_resolve = False)
 
 	data = gevent.spawn(data_giver.getDataFromFile, searchFolder, resolver)
+	data.link_exception(test_hooks.greenletException)
 	data.join()
 
 	if STATS:

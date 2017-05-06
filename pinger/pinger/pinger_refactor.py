@@ -6,7 +6,7 @@ from dicttoxml import dicttoxml
 from error_handling_library import test_hooks
 from libs.outputDataIntoDict import Outputter
 from libs.dataGiver import DataGiver
-from libs.Resolver import Resolver
+from libs.resolver import Resolver
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")

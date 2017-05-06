@@ -25,10 +25,7 @@ if __name__ == "__main__":
 	a = 15
 	b = 202
 
-	#abc(a)
-	try:
-		abc(a)
-	except Exception as e:
-	 	print(e)
+	abc(a)
 	abc(a, b)
 
+#ZC11438-GMKE-3L37
