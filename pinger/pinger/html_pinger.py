@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
+from error_handling_library import test_hooks
+from libs.logger import Logger
+
+LOGGER = Logger()
+test_hooks.init( logger = LOGGER )
 
 import time, os, argparse, sys, requests, gevent, grequests
 
 from gevent import socket, Timeout 
 
-from error_handling_library import test_hooks
 from libs.dataGiver import DataGiver
 from libs.outputDataIntoDict import Outputter
 from libs.resolver import Resolver
@@ -113,12 +117,12 @@ class HtmlPinger():
 				r = requests.request(method = self.method, url = self.address, auth = self.credentials, allow_redirects = True, timeout = 1)
 			except Exception as e:
 				continue
-			#Check for 401 and if my guy is there :)
 
 			if r.status_code == 405 and not self.method_changed:
 				method_changed = True
 				self.method = 'GET'
 				continue
+
 
 			if r.status_code == 401 and not self.credentials:
 				self.credentials = self.getAuthorizationForAddress(r.url) or self.getAuthorizationForAddress(self.address)
@@ -153,10 +157,11 @@ class HtmlPinger():
 			else:
 				self.data['value'] = 1
 
+
 			if not self.data['value'] == 1:
-				print("For: {0} we got:".format(self.address))
-				print("\t", r.status_code)
-				print("\t", r.headers)
+				LOGGER.log("For: {0} we got:".format(self.address))
+				LOGGER.log("\t", r.status_code)
+				LOGGER.log("\t", r.headers)
 	
 		OPENED_HTTP_REQUESTS -= 1
 		#If all the requests hit a timeout
@@ -192,5 +197,4 @@ def main():
 			print(file_if_in_statistics_mode)
 	else:
 		print(outputter.getResult(outputFormat=args.output))
-
 main()
