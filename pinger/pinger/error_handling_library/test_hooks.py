@@ -8,6 +8,7 @@ def init(logger):
 
 def my_excepthook(_type, value, error_traceback):
 	if _type is KeyboardInterrupt:
+		print('Please don\'t kill the scripts while it\'s executing!')
 		if LOGGER:
 			LOGGER.log('Please dont kill the script while its working')
 		else:
