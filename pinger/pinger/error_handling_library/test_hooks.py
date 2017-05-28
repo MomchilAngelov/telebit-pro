@@ -1,15 +1,31 @@
-import sys, traceback
+import sys, traceback, time
+
+LOGGER = None
+
+def init(logger):
+	global LOGGER
+	LOGGER = logger
 
 def my_excepthook(_type, value, error_traceback):
-	print("*" * 50)
-	print("The type of the exception is: ", _type)
-	print("The value of the exception is: ", value)
-	print("The traceback is: ", error_traceback)
-	
-	for exception_line in traceback.format_exception(_type, value, error_traceback):
-		print(exception_line)
+	if _type is KeyboardInterrupt:
+		print('Please don\'t kill the scripts while it\'s executing!')
+		if LOGGER:
+			LOGGER.log('Please dont kill the script while its working')
+		else:
+			print('Please dont kill the script while its working')
 
-	print("*" * 50)
+	else:
+		if LOGGER:
+			print('There was an error in the script execution, please try again...')
+
+			LOGGER.log('**************************')
+			LOGGER.log(time.strftime('%c'))
+
+			for exception_line in traceback.format_exception(_type, value, error_traceback):
+				LOGGER.log(exception_line)
+		else:
+			for exception_line in traceback.format_exception(_type, value, error_traceback):
+				print(exception_line)
 
 def greenletException(greenlet):
 	print("*" * 50)
@@ -25,10 +41,5 @@ if __name__ == "__main__":
 	a = 15
 	b = 202
 
-	#abc(a)
-	try:
-		abc(a)
-	except Exception as e:
-	 	print(e)
+	abc(a)
 	abc(a, b)
-
