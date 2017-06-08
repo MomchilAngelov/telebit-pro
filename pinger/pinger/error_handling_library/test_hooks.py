@@ -28,9 +28,18 @@ def my_excepthook(_type, value, error_traceback):
 				print(exception_line)
 
 def greenletException(greenlet):
-	print("*" * 50)
-	print("Error in greenlet: ", greenlet)
-	print("*" * 50)
+	# print("*" * 50)
+	# print("Error in greenlet: ", greenlet)
+	# print("*" * 50)
+	# print(dir(greenlet))
+	# print("*" * 50)
+	# print(greenlet.exception)
+	# print("*" * 50)
+	LOGGER.log('There was an error in the greenlet: ' + str(greenlet.exception))
+
+def checkType(real, *expected):
+	if real not in expected:
+		raise AssertionError('Expected: ' + str(expected), 'Got: ' + str(real))
 
 sys.excepthook = my_excepthook
 

@@ -1,4 +1,5 @@
 import sys, gevent, socket
+import error_handling_library.test_hooks as ut
 
 def should_block(resolver):
 	if resolver.CURRENT_IN_GETHOSTBYNAME_EX > resolver.OPENED_HOSTS_MAX:
@@ -64,13 +65,17 @@ class Resolver():
 			self.iterations += 1
 
 	def ping(self, item):
-		pinger = self.class_of_pinger(item = item)
-		self.threads.append(gevent.spawn(pinger.ping, self.outputter))
+		greenletThread = gevent.spawn(self.class_of_pinger, item, self.outputter)
+		greenletThread.link_exception(ut.greenletException)
+		self.threads.append(greenletThread)
 
 	def ping_all(self, items):
 		if self.should_resolve:
 			for item in items:
-				self.threads.append(gevent.spawn(self.resolveDomainName, item['address'], item))
+				data = gevent.Greenlet(self.resolveDomainName, item['address'], item)
+				data.link_exception(ut.greenletException)
+				data.start()
+				self.threads.append(data)
 		else:
 			for item in items:
 				self.ping(item)
