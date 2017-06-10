@@ -102,3 +102,259 @@ Please dont kill the script while its working
 Please dont kill the script while its working
 Please dont kill the script while its working
 Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+**************************
+Thu Jun  8 14:12:17 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 207, in <module>
+    main()
+
+  File "html_pinger.py", line 192, in main
+    data.link_exception(error_handling_library.test_hooks.greenletException)
+
+NameError: name 'error_handling_library' is not defined
+
+**************************
+Thu Jun  8 14:12:19 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 207, in <module>
+    main()
+
+  File "html_pinger.py", line 192, in main
+    data.link_exception(error_handling_library.test_hooks.greenletException)
+
+NameError: name 'error_handling_library' is not defined
+
+**************************
+Thu Jun  8 14:12:20 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 207, in <module>
+    main()
+
+  File "html_pinger.py", line 192, in main
+    data.link_exception(error_handling_library.test_hooks.greenletException)
+
+NameError: name 'error_handling_library' is not defined
+
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+There was an error in the greenlet: unsupported operand type(s) for +: 'TooManyRedirects' and 'str'
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: 'module' object is not callable
+There was an error in the greenlet: 'module' object is not callable
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: name 'Greenlet' is not defined
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+**************************
+Thu Jun  8 15:28:09 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 213, in <module>
+    main()
+
+  File "html_pinger.py", line 199, in main
+    data.join()
+
+  File "/usr/local/lib/python3.5/dist-packages/gevent/greenlet.py", line 496, in join
+    result = self.parent.switch()
+
+  File "/usr/local/lib/python3.5/dist-packages/gevent/hub.py", line 630, in switch
+    return RawGreenlet.switch(self)
+
+gevent.hub.LoopExit: ('This operation would block forever', <Hub at 0x7fe3ce2380e0 epoll default pending=0 ref=0 fileno=4>)
+
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: 
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Exceeded 30 redirects.

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from error_handling_library import test_hooks
+import error_handling_library.test_hooks as ut
 from libs.logger import Logger
 
 LOGGER = Logger()
-test_hooks.init( logger = LOGGER )
+ut.init( logger = LOGGER )
 
 import time, os, argparse, sys, requests, gevent, grequests
 
@@ -66,18 +66,26 @@ class Statistics():
 
 class HtmlPinger():
 
-	def __init__(self, item):
+	def __init__(self, item, outputter):
 		self.address = item['address']
 		self.request_count = item['request_count']
 		self.request_interval = item['request_interval']
 		self.idx = item['idx']
 		self.application_name_human_name = item.get('application_name_human_name', None)
 		self.application_name = item.get('application_name', None)
-		
 		self.expected_response_code = item.get('expected_response_code', None)
 		self.expected_headers = item.get('expected_headers', None)
+		self.outputter = outputter
+
+		ut.checkType(type(item['address']), type(''))
+		ut.checkType(type(item['request_count']), type(1))
+		ut.checkType(type(item['request_interval']), type(1), type(0.5))
+		ut.checkType(type(item['idx']), type(''))
+		ut.checkType(type(self.expected_headers), type(None), type([]))
+		ut.checkType(type(self.expected_response_code), type(None), type([]))
 
 		self.normalizeInput()
+		self.ping()
 
 	def normalizeInput(self):
 		if 'http' not in self.address:
@@ -94,7 +102,7 @@ class HtmlPinger():
 
 		return None
 
-	def ping(self, outputter):
+	def ping(self):
 		global OPENED_HTTP_REQUESTS
 
 		self.data = {}
@@ -114,7 +122,11 @@ class HtmlPinger():
 		for k in range(self.request_count):
 
 			try:
-				r = requests.request(method = self.method, url = self.address, auth = self.credentials, allow_redirects = True, timeout = 1)
+				r = requests.request(method = self.method, url = self.address, auth = self.credentials, allow_redirects = True, timeout = self.request_interval, headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'})
+			except requests.TooManyRedirects as e:
+				LOGGER.log(str(e))
+				break
+
 			except Exception as e:
 				continue
 
@@ -170,7 +182,7 @@ class HtmlPinger():
 
 
 
-		outputter.appendItemToOutputterHTML(self.data)
+		self.outputter.appendItemToOutputterHTML(self.data)
 
 def main():
 	if STATS:
@@ -182,7 +194,7 @@ def main():
 	resolver = Resolver(outputter = outputter, class_of_pinger = HtmlPinger, should_resolve = False)
 
 	data = gevent.spawn(data_giver.getDataFromFile, searchFolder, resolver)
-	data.link_exception(test_hooks.greenletException)
+	data.link_exception(ut.greenletException)
 	data.join()
 
 	if STATS:
