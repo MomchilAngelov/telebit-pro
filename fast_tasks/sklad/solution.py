@@ -1,9 +1,17 @@
-matrix = []
-length = input()
+import sys
 
-for i in range(int(length)):
+matrix = []
+length = int(input())
+if length > 100 or length < 0:
+	print('Bad Input!')
+	sys.exit()
+
+for i in range(length):
 	row = input()
 	matrix.append([int(x) for x in row.split()])
+	if length != matrix[-1]:
+		print("Bad Input!")
+		sys.exit()
 
 def findRoutes(matrix):
 	routes = 0
@@ -51,8 +59,8 @@ def findDifferentGoods(matrix):
 
 	return numberOfGoods
 
-for row in matrix:
-	print(row)
+# for row in matrix:
+# 	print(row)
 
-#print(findRoutes(matrix))
+print(findRoutes(matrix))
 print(findDifferentGoods(matrix))
