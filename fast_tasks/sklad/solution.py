@@ -9,7 +9,7 @@ if length > 100 or length < 0:
 for i in range(length):
 	row = input()
 	matrix.append([int(x) for x in row.split()])
-	if length != matrix[-1]:
+	if length != len(matrix[-1]):
 		print("Bad Input!")
 		sys.exit()
 
@@ -19,7 +19,9 @@ def findRoutes(matrix):
 		if sum(row) == 0:
 			routes += 1
 
-	for i in range(len(matrix)):
+	#If the matrix is a rectangle instead of a square
+	#We need to use the rows length instead of columns length
+	for i in range(len(matrix[0])):
 		currentSum = 0
 		for row in matrix:
 			currentSum += row[i]
@@ -39,7 +41,7 @@ def findDifferentGoods(matrix):
 		for idx, value in enumerate(row):
 			if value > 0:
 				subArr.append(idx)
-			if value == 0 and subArr:
+			elif value == 0 and subArr:
 				FlagIndex.append(subArr[:])
 				subArr = []
 		if subArr:
@@ -59,8 +61,11 @@ def findDifferentGoods(matrix):
 
 	return numberOfGoods
 
-# for row in matrix:
-# 	print(row)
+def printMatrix(matrix):
+	for row in matrix:
+		for value in row:
+			print(value, ' ', end='')
+		print()
 
-print(findRoutes(matrix))
-print(findDifferentGoods(matrix))
+#printMatrix(matrix)
+print(findRoutes(matrix), findDifferentGoods(matrix))
