@@ -7,6 +7,10 @@ from error_handling_library import test_hooks
 from libs.outputDataIntoDict import Outputter
 from libs.dataGiver import DataGiver
 from libs.resolver import Resolver
+from libs.logger import Logger
+
+LOGGER = Logger()
+test_hooks.init( logger = LOGGER )
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
 parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
@@ -66,8 +70,7 @@ class Statistics():
 		last_sum_of_cpu_usage = 0
 
 		while 1:
-			print("Opened sockets: {0}|Sockets That want to be opened: {1}| Current unresolved hosts: {2}| Currently Resolved Hosts: {5}|Host number: {3}|Greenlets that try to resolve their domain: {4}"
-				.format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+			print("Opened sockets: {0}|Sockets That want to be opened: {1}".format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS))
 			
 			resource_giver = resource.getrusage(resource.RUSAGE_SELF)
 			
@@ -87,7 +90,7 @@ class Statistics():
 
 class Pinger():
 
-	def __init__(self, item):
+	def __init__(self, item, outputter):
 		global OPENED_SOCKETS
 		self.data = item
 		self._id = int(item['idx'])
@@ -107,6 +110,9 @@ class Pinger():
 		self.socket.settimeout(self._timeout)
 		self.total_time = 0
 		self.total_received_packets = 0
+		self.outputter = outputter
+
+		self.ping()
 
 	def makeGoodPacket(self):
 		ICMP_ECHO_REQUEST = 8; fullPacketSize = 64; sizeOfSentPacket = fullPacketSize; sizeOfSentPacket -= 8; checkSum = 0;
@@ -141,7 +147,7 @@ class Pinger():
 
 		return answer
 
-	def ping(self, outputter):
+	def ping(self):
 		global OPENED_SOCKETS
 
 		try:
@@ -153,7 +159,7 @@ class Pinger():
 
 			OPENED_SOCKETS -= 1
 			self.socket.close()
-			outputter.appendItemToOutputter(self.data)
+			self.outputter.appendItemToOutputter(self.data)
 
 			return
 
@@ -190,7 +196,7 @@ class Pinger():
 		self.socket.close()
 		OPENED_SOCKETS -= 1
 
-		outputter.appendItemToOutputter(self.data)
+		self.outputter.appendItemToOutputter(self.data)
 
 
 def main():

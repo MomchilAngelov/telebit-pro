@@ -64,6 +64,7 @@ class Resolver():
 			self.ping(array_with_data)
 			self.iterations += 1
 
+
 	def ping(self, item):
 		greenletThread = gevent.spawn(self.class_of_pinger, item, self.outputter)
 		greenletThread.link_exception(ut.greenletException)
@@ -72,9 +73,8 @@ class Resolver():
 	def ping_all(self, items):
 		if self.should_resolve:
 			for item in items:
-				data = gevent.Greenlet(self.resolveDomainName, item['address'], item)
+				data = gevent.spawn(self.resolveDomainName, item['address'], item)
 				data.link_exception(ut.greenletException)
-				data.start()
 				self.threads.append(data)
 		else:
 			for item in items:

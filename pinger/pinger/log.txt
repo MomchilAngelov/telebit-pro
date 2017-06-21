@@ -358,3 +358,182 @@ There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 
 Please dont kill the script while its working
 There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
 Exceeded 30 redirects.
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+There was an error in the greenlet: __init__() takes 2 positional arguments but 3 were given
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+**************************
+Wed Jun 21 13:29:05 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 214, in <module>
+    main()
+
+  File "pinger_refactor.py", line 207, in main
+    stater.printData()
+
+  File "pinger_refactor.py", line 74, in printData
+    .format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+
+NameError: name 'OPENED_HOSTS' is not defined
+
+**************************
+Wed Jun 21 13:29:10 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 214, in <module>
+    main()
+
+  File "pinger_refactor.py", line 207, in main
+    stater.printData()
+
+  File "pinger_refactor.py", line 74, in printData
+    .format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+
+NameError: name 'OPENED_HOSTS' is not defined
+
+**************************
+Wed Jun 21 13:29:11 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 214, in <module>
+    main()
+
+  File "pinger_refactor.py", line 207, in main
+    stater.printData()
+
+  File "pinger_refactor.py", line 74, in printData
+    .format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+
+NameError: name 'OPENED_HOSTS' is not defined
+
+**************************
+Wed Jun 21 13:29:11 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 214, in <module>
+    main()
+
+  File "pinger_refactor.py", line 207, in main
+    stater.printData()
+
+  File "pinger_refactor.py", line 74, in printData
+    .format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+
+NameError: name 'OPENED_HOSTS' is not defined
+
+**************************
+Wed Jun 21 13:29:15 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 214, in <module>
+    main()
+
+  File "pinger_refactor.py", line 207, in main
+    stater.printData()
+
+  File "pinger_refactor.py", line 74, in printData
+    .format(OPENED_SOCKETS, CURRENT_TRY_TO_BE_OPENED_SOCKETS, OPENED_HOSTS, CURRENT_HOST, CURRENT_IN_GETHOSTBYNAME_EX, CURRENT_HOST - OPENED_HOSTS))
+
+NameError: name 'OPENED_HOSTS' is not defined
+
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+There was an error in the greenlet: local variable 'OPENED_HOSTS' referenced before assignment
+**************************
+Wed Jun 21 13:40:05 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 210, in <module>
+    main()
+
+  File "pinger_refactor.py", line 206, in main
+    data.join()
+
+  File "/usr/local/lib/python3.5/dist-packages/gevent/greenlet.py", line 496, in join
+    result = self.parent.switch()
+
+  File "/usr/local/lib/python3.5/dist-packages/gevent/hub.py", line 630, in switch
+    return RawGreenlet.switch(self)
+
+gevent.hub.LoopExit: ('This operation would block forever', <Hub at 0x7f3792eb03d8 epoll default pending=0 ref=0 fileno=4>)
+
+**************************
+Wed Jun 21 13:42:54 2017
+Traceback (most recent call last):
+
+  File "pinger_refactor.py", line 210, in <module>
+    main()
+
+  File "pinger_refactor.py", line 206, in main
+    data.join()
+
+  File "/usr/local/lib/python3.5/dist-packages/gevent/greenlet.py", line 496, in join
+    result = self.parent.switch()
+
+  File "/usr/local/lib/python3.5/dist-packages/gevent/hub.py", line 630, in switch
+    return RawGreenlet.switch(self)
+
+gevent.hub.LoopExit: ('This operation would block forever', <Hub at 0x7f3668e613d8 epoll default pending=0 ref=0 fileno=4>)
+
+There was an error in the greenlet: name 'join' is not defined
+There was an error in the greenlet: name 'join' is not defined
+There was an error in the greenlet: name 'join' is not defined
+There was an error in the greenlet: name 'join' is not defined
+There was an error in the greenlet: name 'join' is not defined
+There was an error in the greenlet: name 'join' is not defined
+There was an error in the greenlet: module 'gevent' has no attribute 'join'
+There was an error in the greenlet: module 'gevent' has no attribute 'join'
+There was an error in the greenlet: module 'gevent' has no attribute 'join'
+There was an error in the greenlet: module 'gevent' has no attribute 'join'
+There was an error in the greenlet: module 'gevent' has no attribute 'join'
+There was an error in the greenlet: module 'gevent' has no attribute 'join'
+There was an error in the greenlet: object of type 'Greenlet' has no len()
+There was an error in the greenlet: object of type 'Greenlet' has no len()
+There was an error in the greenlet: object of type 'Greenlet' has no len()
+There was an error in the greenlet: object of type 'Greenlet' has no len()
+There was an error in the greenlet: object of type 'Greenlet' has no len()
+There was an error in the greenlet: object of type 'Greenlet' has no len()
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+There was an error in the greenlet: ("Expected: (<class 'str'>,)", "Got: <class 'int'>")
+Please dont kill the script while its working
+Please dont kill the script while its working
+Exceeded 30 redirects.
+Please dont kill the script while its working
+Please dont kill the script while its working
+Please dont kill the script while its working
