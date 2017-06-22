@@ -1,5 +1,11 @@
 import time, sys, operator
 
+# A program that find the minimum and maximum speed for a road network
+# Every vertices has a weight - the optimal speed 
+# Minimum must be above the optimal of all the vertices that it passes through, and max should be 	
+#
+
+
 class Graph():
 
 	def __init__(self):
@@ -17,9 +23,10 @@ class Graph():
 
 	def allPathsForNode(self, node):
 		paths = []
-		for value in self.paths:
-			if value.toNode == node or value.fromNode == node:
-				paths.append(value)
+		for path in self.paths:
+			if path.toNode == node or path.fromNode == node:
+				if not path.isDeleted:
+					paths.append(path)
 
 		return paths
 
@@ -68,18 +75,23 @@ class Graph():
 		self.paths = sorted(self.paths, key = lambda x: x.speed)
 
 	def deletePath(self):
-		for idx in range(len(self.paths)):
-			for idx2 in range(idx+1, len(self.paths)):
-				if self.paths[idx] == self.paths[idx2]:
-					if not self.paths[idx].isDeleted:
-						if self.doesNotIsolateNode(self.paths[idx]):
-							self.paths[idx].isDeleted = True
-							return
-					elif not self.paths[idx2].isDeleted:
-						if self.doesNotIsolateNode(self.paths[idx2]):
-							self.paths[idx2].isDeleted = True
-							return
+		pathsThatCanBeDeleted = []
+		# ако от нещо излизат 2 пътя, а в другото влизат 2 - може да се изтрие!
+		for path in self.paths:
+			if path.isDeleted:
+				continue
+			
+			if len(self.allPathsForNode(path.fromNode)) > 1 \
+				and len(self.allPathsForNode(path.toNode)) > 1:
+				pathsThatCanBeDeleted.append(path)
+		
+		pathsThatCanBeDeleted[0].isDeleted = True
 
+	def getPathByNodes(self, node1, node2):
+		for path in self.paths:
+			if Path(node1, node2, 1) == path:
+				return path
+		
 	def doesNotIsolateNode(self, path):
 		if len(self.allPathsForNode(path.fromNode)) == 1 or len(self.allPathsForNode(path.toNode)) == 1:
 			return False
@@ -174,7 +186,8 @@ class Path():
 		return self.__str__()
 
 	def __eq__(self, other):
-		if self.fromNode == other.fromNode or self.fromNode == other.toNode or self.toNode == other.fromNode or self.toNode == other.toNode:
+		if self.fromNode == other.fromNode and self.toNode == other.toNode or \
+			self.toNode == other.fromNode and self.fromNode == other.toNode:
 			return True
 		return False
 
@@ -226,5 +239,6 @@ for shortestPath in shortestPaths:
 	tmp = [maximumSpeed - minimumSpeed, maximumSpeed, minimumSpeed]
 	result.append(tmp)
 
+print(result)
 result = sorted(result, key=operator.itemgetter(0, 1))[0]
 print(result[2], result[1])
