@@ -72,11 +72,18 @@ class Graph():
 			for idx2 in range(idx+1, len(self.paths)):
 				if self.paths[idx] == self.paths[idx2]:
 					if not self.paths[idx].isDeleted:
-						self.paths[idx].isDeleted = True
-						return
+						if self.doesNotIsolateNode(self.paths[idx]):
+							self.paths[idx].isDeleted = True
+							return
 					elif not self.paths[idx2].isDeleted:
-						self.paths[idx2].isDeleted = True
-						return
+						if self.doesNotIsolateNode(self.paths[idx2]):
+							self.paths[idx2].isDeleted = True
+							return
+
+	def doesNotIsolateNode(self, path):
+		if len(self.allPathsForNode(path.fromNode)) == 1 or len(self.allPathsForNode(path.toNode)) == 1:
+			return False
+		return True
 
 
 	def getShortestPath(self):
