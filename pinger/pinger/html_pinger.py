@@ -26,7 +26,7 @@ STATS = args.stats
 versionNumber = "3.0"
 applicationName = "Momo's Pinger"
 
-defaultSearchFolder = "test_Data/inputHTML.json"
+defaultSearchFolder = "/etc/tbmon/defaultHTMLJSON"
 defaultOutputFolder = "output_data"
 
 searchFolder = args.configure or defaultSearchFolder
@@ -68,18 +68,24 @@ class HtmlPinger():
 
 	def __init__(self, item, outputter):
 		self.address = item['address']
-		self.request_count = item['request_count']
-		self.request_interval = item['request_interval']
+		self.requests_count = item['requests_count']
+		self.request_timeout = item['request_timeout']
 		self.idx = item['idx']
 		self.application_name_human_name = item.get('application_name_human_name', None)
 		self.application_name = item.get('application_name', None)
 		self.expected_response_code = item.get('expected_response_code', None)
 		self.expected_headers = item.get('expected_headers', None)
+		self.expected_response_bodies = item.get('expected_response_bodies', None)
+		self.basicauthUsername = item.get('username', None)
+		self.basicauthPassword = item.get('password', None)
+		self.triggerWrappers = item.get('items', None)
+		self.dictAttackTestConditions = item.get('password_dict_test', None)
+		
 		self.outputter = outputter
 
 		ut.checkType(type(item['address']), type(''))
-		ut.checkType(type(item['request_count']), type(1))
-		ut.checkType(type(item['request_interval']), type(1), type(0.5))
+		ut.checkType(type(item['requests_count']), type(1))
+		ut.checkType(type(item['request_timeout']), type(1), type(0.5))
 		ut.checkType(type(item['idx']), type(''))
 		ut.checkType(type(self.expected_headers), type(None), type([]))
 		ut.checkType(type(self.expected_response_code), type(None), type([]))
@@ -106,81 +112,79 @@ class HtmlPinger():
 		global OPENED_HTTP_REQUESTS
 
 		self.data = {}
+		self.data['items'] = self.triggerWrappers
+		self.data['idx'] = self.idx
 		self.data['timestamp'] = int(time.time())
-		self.data['type'] = 'boolean'
-		self.data['address'] = self.address
-		self.data['units'] = None
+		self.data['type'] = 'float'
+		self.data['name'] = self.address
+		self.data['units'] = '%'
 		self.data['application_name_human_name'] = self.application_name_human_name
 		self.data['application_name'] = self.application_name
 		self.credentials = None
 		self.method_changed = False
 		self.method = 'HEAD'
+		self.failedRequests = 0
+
 
 		should_block_http_requests()
 		OPENED_HTTP_REQUESTS += 1
 
-		for k in range(self.request_count):
+		k = 0
+		while k < self.requests_count:
 
 			try:
-				r = requests.request(method = self.method, url = self.address, auth = self.credentials, allow_redirects = True, timeout = self.request_interval, headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'})
+				r = requests.request(method = self.method, url = self.address, auth = self.credentials, allow_redirects = True, timeout = self.request_timeout, headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'})
 			except requests.TooManyRedirects as e:
 				LOGGER.log(str(e))
-				break
+				self.failedRequests += 1
+				k += 1
+				continue
 
 			except Exception as e:
+				k += 1
+				self.failedRequests += 1
 				continue
 
 			if r.status_code == 405 and not self.method_changed:
 				method_changed = True
 				self.method = 'GET'
 				continue
-
+				
 
 			if r.status_code == 401 and not self.credentials:
-				self.credentials = self.getAuthorizationForAddress(r.url) or self.getAuthorizationForAddress(self.address)
-				if self.credentials:
+				if self.username:
+					self.credentials = (self.username, self.password)
 					continue
+				else:
+					self.failedRequests = self.requests_count
+					break
 
 
 			if self.expected_response_code and self.expected_headers:
 			
 				self.expected_headers = set(self.expected_headers)
-				if self.expected_headers.issubset(set(r.headers)) and r.status_code in self.expected_response_code:
-					self.data['value'] = 1
-				else:
-					self.data['value'] = 0
+				if not (self.expected_headers.issubset(set(r.headers)) and r.status_code in self.expected_response_code):
+					self.failedRequests = self.requests_count
 					break
 			
 			elif self.expected_response_code:
 			
-				if r.status_code in self.expected_response_code:
-					self.data['value'] = 1
-				else:
-					self.data['value'] = 0
+				if not r.status_code in self.expected_response_code:
+					self.failedRequests = self.requests_count
 					break
 			elif self.expected_headers:
 				self.expected_headers = set(self.expected_headers)
 				
-				if self.expected_headers.issubset(set(r.headers)):
-					self.data['value'] = 1
-				else:
-					self.data['value'] = 0
+				if not self.expected_headers.issubset(set(r.headers)):
+					self.failedRequests = self.requests_count
 					break
-			else:
-				self.data['value'] = 1
 
+			k += 1
 
-			if not self.data['value'] == 1:
-				LOGGER.log("For: {0} we got:".format(self.address))
-				LOGGER.log("\t", r.status_code)
-				LOGGER.log("\t", r.headers)
-	
+		
 		OPENED_HTTP_REQUESTS -= 1
 		#If all the requests hit a timeout
-		if not 'value' in self.data:
-			self.data['value'] = 0
-
-
+		self.data['value'] = 100 - (1 - (self.failedRequests / self.requests_count)) * 100
 
 		self.outputter.appendItemToOutputterHTML(self.data)
 
