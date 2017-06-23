@@ -7,23 +7,23 @@
 	suites: oldstable, stable, testing, unstable, or experimental
 """
 
-import json, re, sys
+import json, re, sys, pycountry, gevent
+
+from gevent import monkey
+monkey.patch_all()
+
 from urllib.request import urlopen
+from urllib.error import HTTPError as fetchError
 
 godRepoToLevel = {
 	'normal': 'https://deb.debian.org/debian',
 	'debug': 'https://deb.debian.org/debian-debug',
-	'ports': 'https://deb.debian.org/debian-ports',
+#	'ports': 'https://deb.debian.org/debian-ports',
+	'ports': 'http://ftp.debian.org/debian',
 	'security': 'https://deb.debian.org/debian-security',
 }
 
-def getSourceFileFromLink(link):
-	print(link)
-	fileURL = link + '/Release'
-	file = str(urlopen(fileURL).read(), 'utf-8').split('\n')
-	return file
-
-def getTypeOfRepoLink(distro):
+def getGodRepo(distro):
 	if 'backports' in distro:
 		return godRepoToLevel['ports']
 	elif '/updates' in distro:
@@ -31,52 +31,64 @@ def getTypeOfRepoLink(distro):
 	else:
 		return godRepoToLevel['normal']
 
-def getDateFromFile(file):
+def getReleaseFileFromLink(link):
+	fileURL = link + '/Release'
+	file = str(urlopen(fileURL).read(), 'utf-8').split('\n')
+	return file
+
+def getDateLineFromFile(file):
 	for line in file:
 		if line.startswith('Date'):
 			return line
 
-my_ip = str(urlopen('http://ip.42.pl/raw').read(), 'utf-8')
+def getCountryCodeByGeoPosition():
+	my_ip = str(urlopen('http://ip.42.pl/raw').read(), 'utf-8')
+	url = 'http://freegeoip.net/json/' + my_ip
+	data = str(urlopen(url).read(), 'utf-8')
+	js = json.loads(data)
+	return js['country_code']	
 
-url = 'http://freegeoip.net/json/' + my_ip
+def isInGoodCountry(data):
+	myCountryCode = getCountryCodeByGeoPosition()
 
-data = str(urlopen(url).read(), 'utf-8')
+	country = data[1].split('//')[1]
+	components = country.split('.')
+	for component in components:
+		component = component.upper()
+		for country in pycountry.countries:
+			if component == country.alpha_2:
+				if component == myCountryCode:
+					return 1
+				else:
+					return -1
+	return 0
 
-js = json.loads(data)
-print('IP Adress: '         +   js['ip'])
-print('Country Code: '      +   js['country_code'])
-print('Country Name: '      +   js['country_name'])
-print()
+def makeIt(line):
+	data = line.split(' ')
+	godBaseLink = getGodRepo(data[2])
+	components = data[3:-1]
 
+	try:
+
+		source = getReleaseFileFromLink('{0}'.format(data[1] + '/dists/' + data[2]))
+		sourceTestAgainst = getReleaseFileFromLink('{0}/dists/{1}'.format(godBaseLink, data[2]))
+
+	except fetchError as e:
+		print(data[1] + '/dists/' + data[2], '-1')
+	else:
+		dateSource = getDateLineFromFile(source)
+		dateSourceTestAgainst = getDateLineFromFile(sourceTestAgainst)
+		print(data[1] + '/dists/' + data[2], '1' if dateSource == dateSourceTestAgainst else '0', isInGoodCountry(data))
+
+
+
+
+allThreads = []
 with open('/etc/apt/sources.list') as f:
 	for line in f:
 		if line.startswith('#') or line == '\n':
 			continue
-
-		data = line.split(' ')
-		country = data[1].split('.')[0].split('//')[1]
-
-		# print(country.upper())
-		# print(js['country_code'])
-		# print(country.upper() == js['country_code'])
-
-		# if country.upper() == js['country_code']:
-		# 	print('The country is fine')
-		# else:
-		# 	print('The mirror is bad!')
-
-		#print('Type: {0}, uri: {1}, distribution: {2}, packages: {3}'.format( ('binary package' if data[0] == 'deb' else 'source package'), data[1], data[2], [x for x in data[3:-1]] ))
 		
-		links = 'Package link: {0}'.format(data[1] + '/dists/' + data[2])
-		godBaseLink = getTypeOfRepoLink(data[2])
+		allThreads.append(gevent.spawn(makeIt, line))
 
-		components = data[3:-1]
-
-		source = getSourceFileFromLink('{0}'.format(data[1] + '/dists/' + data[2]))
-		sourceTestAgainst = getSourceFileFromLink('{0}/dists/{1}'.format(godBaseLink, data[2]))
-
-		dateSource = getDateFromFile(source)
-		dateSourceTestAgainst = getDateFromFile(sourceTestAgainst)
-		print(dateSource == dateSourceTestAgainst)
-
-
+gevent.joinall(allThreads)
