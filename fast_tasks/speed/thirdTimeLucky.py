@@ -99,9 +99,9 @@ class Graph():
 
 
 	def getShortestPath(self):
-		self.treePaths = [[[] for node in self.nodes] for f in range(len(self.paths) - len(self.nodes)) ]
+		self.treePaths = [[[] for node in self.nodes] for f in range(len(self.paths) - len(self.nodes) + 1) ]
 
-		for k in range(len(self.paths) - len(self.nodes)):
+		for k in range(len(self.paths) - len(self.nodes) + 1):
 			trees = [[node] for node in self.nodes]
 			
 			for i in range(k):
@@ -239,6 +239,5 @@ for shortestPath in shortestPaths:
 	tmp = [maximumSpeed - minimumSpeed, maximumSpeed, minimumSpeed]
 	result.append(tmp)
 
-print(result)
 result = sorted(result, key=operator.itemgetter(0, 1))[0]
 print(result[2], result[1])
