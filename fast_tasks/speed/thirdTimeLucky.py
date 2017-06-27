@@ -102,6 +102,7 @@ class Graph():
 		self.treePaths = [[[] for node in self.nodes] for f in range(len(self.paths) - len(self.nodes) + 1) ]
 
 		for k in range(len(self.paths) - len(self.nodes) + 1):
+			print('{0}/{1}'.format(k+1, len(self.paths) - len(self.nodes) + 1))
 			trees = [[node] for node in self.nodes]
 			
 			for i in range(k):

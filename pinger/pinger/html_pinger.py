@@ -14,7 +14,6 @@ from libs.outputDataIntoDict import Outputter
 from libs.resolver import Resolver
 
 parser = argparse.ArgumentParser(description = """Ping some ips and hosts ;)""")
-parser.add_argument("-o", "--output", help="Output format", type = str, choices=["json", "xml"], default="json")
 parser.add_argument("-c", "--configure", help="Give the ip json file", type = str, default = False)
 parser.add_argument("-s", "--stats", help="Give some statistics on the screen!", action = "store_true", default = False)
 parser.add_argument("-d", "--directory", help="Put the output in written directory. WIll be created if not there.", type = str, default = False)
@@ -81,6 +80,7 @@ class HtmlPinger():
 		self.triggerWrappers = item.get('items', None)
 		self.dictAttackTestConditions = item.get('password_dict_test', None)
 		
+		self.credentialsCheckTimeout = self.request_timeout
 		self.outputter = outputter
 
 		ut.checkType(type(item['address']), type(''))
@@ -97,17 +97,6 @@ class HtmlPinger():
 		if 'http' not in self.address:
 			self.address = 'http://' + self.address
 
-	def getAuthorizationForAddress(self, address):
-		global PASSWORDS
-		
-		if not PASSWORDS:
-			PASSWORDS = {line.split("|")[0]: {"name": line.split("|")[1], "password": line.split("|")[2] } for line in open('passwords.txt')}
-
-		if address in PASSWORDS:
-			return (PASSWORDS[address]['name'], PASSWORDS[address]['password'])
-
-		return None
-
 	def ping(self):
 		global OPENED_HTTP_REQUESTS
 
@@ -120,7 +109,7 @@ class HtmlPinger():
 		self.data['units'] = '%'
 		self.data['application_name_human_name'] = self.application_name_human_name
 		self.data['application_name'] = self.application_name
-		self.credentials = None
+		self.credentials = (self.basicauthUsername, self.basicauthPassword)
 		self.method_changed = False
 		self.method = 'HEAD'
 		self.failedRequests = 0
@@ -151,13 +140,9 @@ class HtmlPinger():
 				continue
 				
 
-			if r.status_code == 401 and not self.credentials:
-				if self.username:
-					self.credentials = (self.username, self.password)
-					continue
-				else:
-					self.failedRequests = self.requests_count
-					break
+			if r.status_code == 401:
+				self.failedRequests = self.requests_count
+				break
 
 
 			if self.expected_response_code and self.expected_headers:
@@ -181,7 +166,22 @@ class HtmlPinger():
 
 			k += 1
 
-		
+		if self.dictAttackTestConditions:
+			self.data['breakThrough'] = False
+			for userCredentialsHash in self.dictAttackTestConditions:
+				try:
+					r = requests.request(method = 'GET', url = self.address, 
+						auth = (userCredentialsHash.username, userCredentialsHash.password), timeout = self.credentialsCheckTimeout)
+				except Exception as e:
+					LOGGER.log(str(e))
+					continue
+
+
+				if r.status_code == 401:
+					continue
+				else:
+					self.data['breakThrough'] = True
+
 		OPENED_HTTP_REQUESTS -= 1
 		#If all the requests hit a timeout
 		self.data['value'] = 100 - (1 - (self.failedRequests / self.requests_count)) * 100
@@ -209,8 +209,8 @@ def main():
 			applicationName, args.output, outputFolder)
 
 		with open(file_if_in_statistics_mode, "w") as f:
-			f.write(outputter.getResult(outputFormat=args.output))
+			f.write(outputter.getResult())
 			print(file_if_in_statistics_mode)
 	else:
-		print(outputter.getResult(outputFormat=args.output))
+		print(outputter.getResult())
 main()

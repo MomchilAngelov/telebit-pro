@@ -788,3 +788,107 @@ Traceback (most recent call last):
 SyntaxError: invalid syntax
 
 There was an error in the greenlet: '17.packet_loss'
+There was an error in the greenlet: 'list' object has no attribute 'items'
+There was an error in the greenlet: name 'v' is not defined
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+**************************
+Tue Jun 27 11:22:48 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 216, in <module>
+    main()
+
+  File "html_pinger.py", line 215, in main
+    print(outputter.getResult())
+
+TypeError: getResult() missing 1 required positional argument: 'outputFormat'
+
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+**************************
+Tue Jun 27 11:22:55 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 216, in <module>
+    main()
+
+  File "html_pinger.py", line 215, in main
+    print(outputter.getResult())
+
+TypeError: getResult() missing 1 required positional argument: 'outputFormat'
+
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+**************************
+Tue Jun 27 11:23:12 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 216, in <module>
+    main()
+
+  File "html_pinger.py", line 215, in main
+    print(outputter.getResult())
+
+  File "/home/momo/Desktop/telebit-pro/pinger/pinger/libs/outputDataIntoDict.py", line 64, in getResult
+    return self.getResultInJson()
+
+AttributeError: 'Outputter' object has no attribute 'getResultInJson'
+
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+**************************
+Tue Jun 27 11:23:13 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 216, in <module>
+    main()
+
+  File "html_pinger.py", line 215, in main
+    print(outputter.getResult())
+
+  File "/home/momo/Desktop/telebit-pro/pinger/pinger/libs/outputDataIntoDict.py", line 64, in getResult
+    return self.getResultInJson()
+
+AttributeError: 'Outputter' object has no attribute 'getResultInJson'
+
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+**************************
+Tue Jun 27 11:23:16 2017
+Traceback (most recent call last):
+
+  File "html_pinger.py", line 216, in <module>
+    main()
+
+  File "html_pinger.py", line 215, in main
+    print(outputter.getResult())
+
+  File "/home/momo/Desktop/telebit-pro/pinger/pinger/libs/outputDataIntoDict.py", line 64, in getResult
+    return self.getResultInJson()
+
+AttributeError: 'Outputter' object has no attribute 'getResultInJson'
+
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+There was an error in the greenlet: 'dict' object has no attribute 'timestamp'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+There was an error in the greenlet: 'dict' object has no attribute 'timestamp'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+There was an error in the greenlet: 'breakthrough'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
+'dict' object has no attribute 'username'
